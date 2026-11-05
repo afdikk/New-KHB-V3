@@ -12,6 +12,7 @@ import './styles/admin.css';
 import './styles/auth.css';
 import './styles/extras.css';
 import './styles/embed.css';
+import './styles/chat-layout.css';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';

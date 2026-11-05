@@ -4,10 +4,13 @@ import { MarkdownText } from './ui/MarkdownText';
 import { MicButton } from './MicButton';
 
 /**
- * Chat publik KHB dengan dua aturan produk:
- * 1. Pengunjung WAJIB mengisi nama + WhatsApp/email sebelum percakapan dimulai.
- * 2. Riwayat percakapan tersimpan per pengunjung (token di localStorage) dan bisa
- *    dibuka lagi kapan saja — pola yang sama dengan omnicare.
+ * Chat publik KHB.
+ *
+ * Aturan produk (mengikuti omnicare):
+ * 1. Data diri (nama + WhatsApp/email) diisi SEKALI, lalu tersimpan di perangkat
+ *    (`localStorage`) sehingga tidak ditanya lagi pada kunjungan berikutnya.
+ * 2. Riwayat tampil sebagai layar penuh — dibuka lewat tombol riwayat, kembali
+ *    dengan tombol back. Tidak memakai sidebar.
  */
 
 interface ChatMessage {
@@ -23,7 +26,10 @@ interface Identity {
   token: string;
 }
 
-const GREETING_FALLBACK = "Assalamu'alaikum! Saya Asisten Halal KHB. Silakan tanya seputar sertifikasi halal, self declare, atau dokumen UMKM.";
+type Screen = 'chat' | 'history';
+
+const GREETING_FALLBACK =
+  "Assalamu'alaikum! Saya Asisten Halal KHB. Silakan tanya seputar sertifikasi halal, self declare, atau dokumen UMKM.";
 
 const isValidContact = (value: string): boolean => {
   const clean = value.replace(/[\s-]/g, '');
@@ -63,7 +69,16 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
-export function PublicChat({ slug, compact = false }: { slug: string; compact?: boolean }) {
+export function PublicChat({
+  slug,
+  compact = false,
+  showHeader = true,
+}: {
+  slug: string;
+  compact?: boolean;
+  /** Sembunyikan kepala chat bila induknya sudah punya header sendiri. */
+  showHeader?: boolean;
+}) {
   const keys = useMemo(() => storageKeys(slug), [slug]);
 
   const [boot, setBoot] = useState<ChatBoot | null>(null);
@@ -72,12 +87,12 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
   const [identityError, setIdentityError] = useState('');
   const [registering, setRegistering] = useState(false);
 
+  const [screen, setScreen] = useState<Screen>('chat');
   const [sessions, setSessions] = useState<VisitorSession[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(
     () => localStorage.getItem(keys.conversation) ?? null,
   );
   const [search, setSearch] = useState('');
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'greeting', role: 'bot', text: GREETING_FALLBACK }]);
   const [input, setInput] = useState('');
@@ -87,7 +102,6 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
   const sessionKey = useRef(localStorage.getItem(keys.session) ?? '');
   const bottom = useRef<HTMLDivElement | null>(null);
 
-  // Konfigurasi widget (nama asisten, sapaan, saran pertanyaan).
   useEffect(() => {
     void (async () => {
       try {
@@ -119,7 +133,6 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
     [slug],
   );
 
-  // Muat daftar riwayat begitu identitas tersedia.
   useEffect(() => {
     if (!identity) return;
     void refreshSessions(identity.token);
@@ -128,7 +141,7 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
   const openSession = async (session: VisitorSession) => {
     if (!identity) return;
     setLoadingHistory(true);
-    setHistoryOpen(false);
+    setScreen('chat');
     try {
       const detail = await api.chat.session(session.conversationId, identity.token, slug);
       setMessages(
@@ -153,7 +166,7 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
   const startNewChat = () => {
     sessionKey.current = '';
     setActiveConversation(null);
-    setHistoryOpen(false);
+    setScreen('chat');
     localStorage.removeItem(keys.session);
     localStorage.removeItem(keys.conversation);
     setMessages([{ id: 'greeting', role: 'bot', text: boot?.assistant.greeting ?? GREETING_FALLBACK }]);
@@ -192,6 +205,7 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
     setIdentity(null);
     setSessions([]);
     setActiveConversation(null);
+    setScreen('chat');
     setDraftIdentity({ name: '', contact: '', consent: false });
   };
 
@@ -221,6 +235,12 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
       void refreshSessions(identity.token);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan.';
+      // Token lama bisa tidak berlaku lagi (data pelanggan dihapus admin) —
+      // minta isi identitas ulang alih-alih menampilkan error mentah.
+      if (/data diri|token/i.test(message)) {
+        changeIdentity();
+        return;
+      }
       setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: 'bot', text: message }]);
     } finally {
       setSending(false);
@@ -236,137 +256,188 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
     );
   }, [sessions, search]);
 
-  // ── Gerbang identitas ────────────────────────────────────────
+  // ── Gerbang identitas (sekali saja, lalu tersimpan) ──────────
   if (!identity) {
     return (
-      <div className="pc-gate">
-        <div className="pc-gate-card">
-          <span className="pc-gate-eyebrow">Sebelum mulai</span>
-          <h2>Isi data diri dulu ya</h2>
-          <p>
-            Nama dan kontak dipakai agar admin KHB bisa menindaklanjuti pertanyaan Anda. Percakapan
-            tersimpan dan bisa dibuka lagi kapan saja.
-          </p>
-          <form onSubmit={(event) => void submitIdentity(event)}>
-            <label className="settings-field">
-              <span>Nama</span>
-              <input
-                className="settings-input"
-                value={draftIdentity.name}
-                onChange={(event) => setDraftIdentity({ ...draftIdentity, name: event.target.value })}
-                placeholder="Nama Anda"
-                autoComplete="name"
-              />
-            </label>
-            <label className="settings-field">
-              <span>WhatsApp / Email</span>
-              <input
-                className="settings-input"
-                value={draftIdentity.contact}
-                onChange={(event) => setDraftIdentity({ ...draftIdentity, contact: event.target.value })}
-                placeholder="08xxxxxxxxxx atau nama@email.com"
-                autoComplete="tel"
-              />
-            </label>
-            <label className="pc-consent">
-              <input
-                type="checkbox"
-                checked={draftIdentity.consent}
-                onChange={(event) => setDraftIdentity({ ...draftIdentity, consent: event.target.checked })}
-              />
-              <span>Saya setuju data ini digunakan untuk keperluan layanan KHB.</span>
-            </label>
-            {identityError ? <p className="pc-error">{identityError}</p> : null}
-            <button className="btn btn-primary" type="submit" disabled={registering}>
-              {registering ? 'Menyimpan…' : 'Mulai Chat'}
-            </button>
-          </form>
+      <div className={`pc-shell is-gate${compact ? ' is-compact' : ''}`}>
+        <div className="pc-main">
+          {showHeader ? (
+            <header className="pc-head">
+              <span className="pc-avatar" aria-hidden="true">K</span>
+              <div className="pc-head-copy">
+                <strong>{boot?.assistant.name ?? 'Asisten Halal KHB'}</strong>
+                <span className="pc-status"><i></i> Online</span>
+              </div>
+            </header>
+          ) : null}
+          <div className="pc-gate">
+            <div className="pc-gate-card">
+              <span className="pc-gate-eyebrow">Sebelum mulai</span>
+              <h2>Isi data diri dulu ya</h2>
+              <p>
+                Data ini cukup diisi sekali dan tersimpan di perangkat Anda. Nama serta kontak dipakai
+                agar admin KHB bisa menindaklanjuti pertanyaan; percakapan juga tersimpan sebagai riwayat.
+              </p>
+              <form onSubmit={(event) => void submitIdentity(event)}>
+                <label className="settings-field">
+                  <span>Nama</span>
+                  <input
+                    className="settings-input"
+                    value={draftIdentity.name}
+                    onChange={(event) => setDraftIdentity({ ...draftIdentity, name: event.target.value })}
+                    placeholder="Nama Anda"
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="settings-field">
+                  <span>WhatsApp / Email</span>
+                  <input
+                    className="settings-input"
+                    value={draftIdentity.contact}
+                    onChange={(event) => setDraftIdentity({ ...draftIdentity, contact: event.target.value })}
+                    placeholder="08xxxxxxxxxx atau nama@email.com"
+                    autoComplete="tel"
+                  />
+                </label>
+                <label className="pc-consent">
+                  <input
+                    type="checkbox"
+                    checked={draftIdentity.consent}
+                    onChange={(event) => setDraftIdentity({ ...draftIdentity, consent: event.target.checked })}
+                  />
+                  <span>Saya setuju data ini digunakan untuk keperluan layanan KHB.</span>
+                </label>
+                {identityError ? <p className="pc-error">{identityError}</p> : null}
+                <button className="btn btn-primary" type="submit" disabled={registering}>
+                  {registering ? 'Menyimpan…' : 'Mulai Chat'}
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── Chat + riwayat ──────────────────────────────────────────
+  // ── Layar riwayat (penuh, dengan tombol back) ───────────────
+  if (screen === 'history') {
+    return (
+      <div className={`pc-shell is-history${compact ? ' is-compact' : ''}`}>
+        <div className="pc-main">
+          <header className="pc-head pc-head-history">
+            <span className="pc-avatar" aria-hidden="true">H</span>
+            <div className="pc-head-copy">
+              <strong>Obrolan Anda</strong>
+              <span className="pc-status">{identity.name} · {identity.contact}</span>
+            </div>
+            <button type="button" className="btn btn-primary btn-sm" onClick={startNewChat}>Baru</button>
+          </header>
+
+          <div className="pc-history-search">
+            <input
+              className="pc-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari percakapan…"
+              aria-label="Cari percakapan"
+            />
+          </div>
+
+          <div className="pc-history-list">
+            {filteredSessions.length === 0 ? (
+              <p className="pc-side-empty">
+                Belum ada riwayat. Mulai bertanya, percakapan akan tersimpan di sini.
+              </p>
+            ) : (
+              filteredSessions.map((session) => (
+                <button
+                  type="button"
+                  key={session.conversationId}
+                  className={`pc-history-item${activeConversation === session.conversationId ? ' is-active' : ''}`}
+                  onClick={() => void openSession(session)}
+                >
+                  <span className="pc-history-avatar" aria-hidden="true">
+                    {session.title.trim().charAt(0).toUpperCase() || '?'}
+                  </span>
+                  <span className="pc-history-copy">
+                    <span className="pc-history-title">{session.title}</span>
+                    <span className="pc-history-snippet">{session.snippet || '—'}</span>
+                  </span>
+                  <span className="pc-history-meta">{relativeTime(session.lastMessageAt)}</span>
+                </button>
+              ))
+            )}
+          </div>
+
+          <div className="pc-history-foot">
+            <button type="button" className="pc-link" onClick={() => setScreen('chat')}>
+              Kembali ke percakapan
+            </button>
+            <button type="button" onClick={changeIdentity}>Ganti data diri</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Layar percakapan ────────────────────────────────────────
   return (
     <div className={`pc-shell${compact ? ' is-compact' : ''}`}>
-      <aside className={`pc-side${historyOpen ? ' is-open' : ''}`}>
-        <div className="pc-side-head">
-          <div>
-            <strong>Obrolan Anda</strong>
+      <div className="pc-main">
+        {showHeader ? (
+          <header className="pc-head">
+            <button
+              type="button"
+              className="pc-back"
+              onClick={() => setScreen('history')}
+              aria-label="Riwayat percakapan"
+            >
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span className="pc-avatar" aria-hidden="true">K</span>
+            <div className="pc-head-copy">
+              <strong>{boot?.assistant.name ?? 'Asisten Halal KHB'}</strong>
+              <span className="pc-status"><i></i> Online</span>
+            </div>
+            <button type="button" className="pc-new" onClick={startNewChat} aria-label="Percakapan baru">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 5v10M5 10h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </button>
+          </header>
+        ) : (
+          <div className="pc-mini">
+            <button type="button" className="pc-mini-btn" onClick={() => setScreen('history')}>
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Riwayat
+            </button>
             <span>{identity.name}</span>
           </div>
-          <button type="button" className="btn btn-primary btn-sm" onClick={startNewChat}>
-            Baru
-          </button>
-        </div>
-        <input
-          className="pc-search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cari percakapan…"
-          aria-label="Cari percakapan"
-        />
-        <div className="pc-session-list">
-          {filteredSessions.length === 0 ? (
-            <p className="pc-side-empty">Belum ada riwayat. Mulai bertanya, percakapan akan tersimpan di sini.</p>
-          ) : (
-            filteredSessions.map((session) => (
-              <button
-                type="button"
-                key={session.conversationId}
-                className={`pc-session${activeConversation === session.conversationId ? ' is-active' : ''}`}
-                onClick={() => void openSession(session)}
-              >
-                <span className="pc-session-title">{session.title}</span>
-                <span className="pc-session-snippet">{session.snippet || '—'}</span>
-                <span className="pc-session-meta">
-                  {relativeTime(session.lastMessageAt)} · {session.messageCount} pesan
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-        <div className="pc-side-foot">
-          <span>{identity.contact}</span>
-          <button type="button" onClick={changeIdentity}>
-            Ganti data diri
-          </button>
-        </div>
-      </aside>
-
-      {historyOpen ? <button type="button" className="pc-backdrop" aria-label="Tutup riwayat" onClick={() => setHistoryOpen(false)} /> : null}
-
-      <div className="pc-main">
-        <header className="pc-head">
-          <button
-            type="button"
-            className="pc-history-toggle"
-            onClick={() => setHistoryOpen((prev) => !prev)}
-            aria-label="Riwayat percakapan"
-          >
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M3 5h14M3 10h14M3 15h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
-          <div>
-            <strong>{boot?.assistant.name ?? 'Asisten Halal KHB'}</strong>
-            <span className="pc-status"><i></i> Online · {identity.name}</span>
-          </div>
-        </header>
+        )}
 
         <div className="pc-body">
           {loadingHistory ? <p className="pc-loading">Memuat riwayat…</p> : null}
           {messages.map((message) => (
-            <div key={message.id} className={`public-msg ${message.role === 'user' ? 'user' : 'bot'}`}>
-              <MarkdownText text={message.text} />
-              {message.source && message.source !== 'none' ? (
-                <span style={{ display: 'block', marginTop: 4, fontSize: 10.5, opacity: 0.7 }}>
-                  {SOURCE_LABEL[message.source]}
-                </span>
-              ) : null}
+            <div key={message.id} className={`pc-msg ${message.role}`}>
+              {message.role === 'bot' ? <span className="pc-msg-avatar" aria-hidden="true">K</span> : null}
+              <div className="pc-bubble">
+                <MarkdownText text={message.text} />
+                {message.source && message.source !== 'none' ? (
+                  <span className="pc-bubble-meta">{SOURCE_LABEL[message.source]}</span>
+                ) : null}
+              </div>
             </div>
           ))}
-          {sending ? <div className="public-msg bot pc-typing">Asisten sedang menulis…</div> : null}
+          {sending ? (
+            <div className="pc-msg bot">
+              <span className="pc-msg-avatar" aria-hidden="true">K</span>
+              <div className="pc-bubble pc-typing"><i></i><i></i><i></i></div>
+            </div>
+          ) : null}
           <div ref={bottom} />
         </div>
 
@@ -380,7 +451,7 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
           </div>
         ) : null}
 
-        <form className="public-input" onSubmit={(event) => void send(event)}>
+        <form className="pc-input-bar" onSubmit={(event) => void send(event)}>
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
@@ -388,7 +459,11 @@ export function PublicChat({ slug, compact = false }: { slug: string; compact?: 
             aria-label="Tulis pertanyaan"
           />
           <MicButton onText={(text) => setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text))} />
-          <button type="submit" disabled={sending}>Kirim</button>
+          <button type="submit" className="pc-send" disabled={sending} aria-label="Kirim pesan">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M3.5 10.5l13-6.5-4.5 13-2.2-5.3-6.3-1.2z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+          </button>
         </form>
       </div>
     </div>

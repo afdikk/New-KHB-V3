@@ -16,6 +16,7 @@ import JoinCommunityPage from "./components/JoinCommunityPage";
 import AuthPage from "./components/AuthPage";
 import ProfilePage from "./components/ProfilePage";
 import Footer from "./components/Footer";
+import ChatLauncher from "./components/ChatLauncher";
 import ScrollToTop from "./components/ScrollToTop";
 import React, { useState, useEffect } from "react";
 import { cmsService } from "./services/api";
@@ -100,6 +101,8 @@ function LandingApp() {
           </Routes>
         </main>
         <Footer />
+        {/* Chatbot KHB mengambang di seluruh halaman landing. */}
+        <ChatLauncher />
       </div>
     </Router>
   );

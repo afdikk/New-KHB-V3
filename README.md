@@ -47,3 +47,16 @@ npm run api:db:seed  # isi ulang data KHB + unggah dokumen ke KMS
 ```
 
 Konfigurasi backend ada di `server/.env` (tidak di-commit).
+
+## Chatbot di landing page
+
+Landing page menampilkan tombol mengambang **“Tanya Halal”** (kanan bawah) yang membuka
+panel berisi iframe `/admin/embed/<slug>` — identitas pengunjung, riwayat, dan jawaban AI
+sama seperti halaman publik, tanpa mencampur CSS admin ke Tailwind landing.
+
+- Komponen: `src/components/ChatLauncher.tsx` (dipasang di `src/App.tsx`).
+- Ganti organisasi: `<ChatLauncher slug="khb-bandung" />`.
+- Tombol/CTA lain di landing bisa membuka chat dengan:
+  `window.dispatchEvent(new Event('khb:open-chat'))`.
+- Inline di tengah halaman (opsional):
+  `<iframe src="/admin/embed/khb-bandung" class="w-full h-[640px] rounded-2xl border" />`

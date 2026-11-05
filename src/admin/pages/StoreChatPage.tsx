@@ -78,13 +78,6 @@ export default function StoreChatPage() {
         </section>
 
         <section className="store-chat-card">
-          <div className="store-chat-head">
-            <span className="store-chat-avatar">✦</span>
-            <div>
-              <strong>{boot?.assistant.name ?? 'Asisten Halal KHB'}</strong>
-              <span><i></i>Siap membantu</span>
-            </div>
-          </div>
           <PublicChat slug={store} />
         </section>
       </main>

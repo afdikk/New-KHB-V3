@@ -639,3 +639,92 @@
   background: var(--green-light); color: var(--green-dark); font-size: 15px; flex: none;
 }
 .widget-card .pc-shell { flex: 1; min-height: 0; height: auto; }
+
+/* ── Penyempurnaan gerbang identitas & kepala chat ──────────────────────── */
+
+.pc-gate { padding: 18px; background: #fff; min-height: 100%; align-items: flex-start; }
+.pc-gate-card {
+  max-width: 100%; border: 0; box-shadow: none; padding: 6px 4px 12px;
+  border-radius: 0; background: transparent;
+}
+.pc-gate-eyebrow {
+  font-size: 10px; letter-spacing: 1px; font-weight: 700; color: var(--green-dark);
+  background: var(--green-light); padding: 4px 9px; border-radius: 999px; margin-bottom: 12px;
+}
+.pc-gate-card h2 { font-size: 20px; line-height: 1.25; margin-bottom: 8px; letter-spacing: -.2px; }
+.pc-gate-card > p { font-size: 12.5px; line-height: 1.65; margin-bottom: 18px; }
+.pc-gate-card form { gap: 14px; }
+.pc-gate-card .settings-field { display: flex; flex-direction: column; gap: 6px; }
+.pc-gate-card .settings-input {
+  height: 42px; border-radius: 10px; font-size: 13px; padding: 0 12px;
+  border: 1.5px solid var(--line); background: #fbfbfd;
+}
+.pc-gate-card .settings-input:focus {
+  border-color: var(--green); background: #fff; box-shadow: 0 0 0 3px rgba(22, 163, 74, .12);
+}
+.pc-consent { font-size: 11.5px; line-height: 1.55; gap: 9px; }
+.pc-consent input { width: 15px; height: 15px; }
+.pc-gate-card .btn-primary {
+  width: 100%; justify-content: center; height: 44px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 600;
+}
+.pc-error {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  padding: 8px 10px; border-radius: 8px; font-size: 11.5px;
+}
+
+.pc-head { padding: 11px 16px; background: #fff; }
+.pc-head strong { font-size: 13px; letter-spacing: -.1px; }
+.pc-status { font-size: 10.5px; margin-top: 1px; }
+.pc-body { padding: 16px 16px 8px; gap: 12px; }
+.pc-starters { padding-bottom: 2px; }
+.pc-shell + .public-input,
+.pc-main .public-input { border-top: 1px solid var(--line); }
+
+/* Panel embed tanpa chrome: bentuk penuh, tanpa bayangan ganda */
+.embed-page:not(.with-chrome) .embed-frame { box-shadow: none; max-width: none; }
+.embed-page:not(.with-chrome) { background: #fff; }
+
+/* Gerbang identitas memakai shell yang sama (header tetap tampil, tanpa sidebar) */
+.pc-shell.is-gate { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; border-top: 0; }
+.pc-shell.is-gate .pc-main { height: auto; }
+.pc-shell.is-gate .pc-gate { padding: 22px 20px 26px; }
+.embed-frame .pc-shell.is-gate,
+.widget-card .pc-shell.is-gate { height: 100%; }
+.embed-frame .pc-shell.is-gate .pc-gate,
+.widget-card .pc-shell.is-gate .pc-gate { flex: 1; overflow-y: auto; }
+
+/* Bar tipis pengganti header saat judul sudah ada di induk (panel launcher) */
+.pc-mini {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 14px; border-bottom: 1px solid var(--line); background: #fbfbfd; flex: none;
+}
+.pc-mini span { font-size: 10.5px; color: var(--muted); }
+.pc-mini-btn {
+  display: inline-flex; align-items: center; gap: 6px; background: #fff;
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px;
+  font-size: 11px; color: var(--ink-2); cursor: pointer;
+}
+.pc-mini-btn:hover { border-color: var(--green); color: var(--green); }
+.pc-mini-btn svg { width: 14px; height: 14px; }
+
+/* ── Riwayat sebagai layar penuh (tanpa sidebar) ───────────────────────── */
+
+.pc-shell { grid-template-columns: minmax(0, 1fr); }
+.pc-shell.is-history { height: 460px; }
+.pc-shell.is-history .pc-main { height: 100%; }
+.embed-frame .pc-shell.is-history,
+.widget-card .pc-shell.is-history { height: 100%; }
+
+.pc-back {
+  width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--line);
+  background: #fff; color: var(--ink-2); display: inline-flex; align-items: center;
+  justify-content: center; cursor: pointer; flex: none; padding: 0;
+}
+.pc-back:hover { border-color: var(--green); color: var(--green); }
+.pc-back svg { width: 16px; height: 16px; }
+
+.pc-head-history { gap: 10px; }
+.pc-head-history > div { flex: 1; min-width: 0; }
+.pc-head-history .btn { flex: none; }
+
