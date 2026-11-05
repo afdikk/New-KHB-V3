@@ -10,6 +10,8 @@ export interface WorkspaceWithSettings {
   slug: string;
   city: string | null;
   tagline: string | null;
+  /** Preferensi panel admin (JSON bebas). */
+  preferences: unknown;
   settings: {
     assistantName: string;
     greeting: string;
@@ -47,6 +49,7 @@ export async function getWorkspace(slug = DEFAULT_WORKSPACE_SLUG): Promise<Works
     slug: workspace.slug,
     city: workspace.city,
     tagline: workspace.tagline,
+    preferences: workspace.preferences,
     settings: {
       assistantName: settings.assistantName,
       greeting: settings.greeting,

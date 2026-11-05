@@ -8,6 +8,8 @@
  * Bentuk balasan backend: `{ data, meta? }`; error `{ error: { code, message } }`.
  */
 
+import { getToken, notifyAuthExpired } from './auth';
+
 const BASE = '/api/v1';
 
 export class ApiError extends Error {
@@ -54,17 +56,24 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...((init.headers as Record<string, string> | undefined) ?? {}),
+  };
+  if (token) {
+    headers.Authorization = 'Bearer ' + token;
+  }
+
   let response: Response;
   try {
-    response = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    });
+    response = await fetch(`${BASE}${path}`, { ...init, headers });
   } catch {
     throw new ApiError('Tidak dapat menghubungi server. Pastikan backend berjalan (npm run dev).', 0, 'NETWORK');
+  }
+
+  if (response.status === 401) {
+    notifyAuthExpired();
   }
 
   if (!response.ok) {
@@ -307,11 +316,20 @@ export interface ChatBoot {
  * ApiError berisi pesan backend.
  */
 async function safeFetch(url: string): Promise<Response> {
+  // Endpoint baca (daftar produk/pelanggan/percakapan/dokumen) juga wajib
+  // membawa token; sebelumnya hanya `request()` yang menyisipkan header.
+  const token = getToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { headers });
   } catch {
     throw new ApiError('Tidak dapat menghubungi server. Pastikan backend berjalan (npm run dev).', 0, 'NETWORK');
+  }
+  if (response.status === 401) {
+    notifyAuthExpired();
   }
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -341,6 +359,33 @@ export const api = {
     summary: () => request<DashboardSummary>('/dashboard/summary'),
   },
 
+  auth: {
+    login: (body: { email: string; password: string }) =>
+      request<{ token: string; expiresAt: string; user: { email: string; name: string; role: 'admin' } }>(
+        '/auth/login',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+    me: () => request<{ email: string; name: string; role: 'admin' }>('/auth/me'),
+  },
+
+  settings: {
+    get: () =>
+      request<{
+        workspace: { name: string; city: string | null; tagline: string | null };
+        preferences: Record<string, Record<string, unknown>>;
+      }>('/settings'),
+    update: (body: {
+      name?: string;
+      city?: string;
+      tagline?: string;
+      preferences?: Record<string, Record<string, unknown>>;
+    }) =>
+      request<{
+        workspace: { name: string; city: string | null; tagline: string | null };
+        preferences: Record<string, Record<string, unknown>>;
+      }>('/settings', { method: 'PUT', body: JSON.stringify(body) }),
+  },
+
   chatbot: {
     get: () => request<ChatbotSettings>('/chatbot/settings'),
     update: (patch: Partial<ChatbotSettings>) =>
@@ -362,6 +407,8 @@ export const api = {
     create: (body: { title: string; category: string; content: string; kind?: string; pages?: number }) =>
       request<DocumentRow>('/knowledge', { method: 'POST', body: JSON.stringify(body) }),
     remove: (id: string) => request<{ id: string }>(`/knowledge/${id}`, { method: 'DELETE' }),
+    upload: (body: { fileName: string; base64: string; title?: string; category?: string }) =>
+      request<unknown>('/knowledge/upload', { method: 'POST', body: JSON.stringify(body) }),
   },
 
   products: {
@@ -438,6 +485,12 @@ export const api = {
         request<FlowEdgeRow>('/flows/edges', { method: 'POST', body: JSON.stringify(body) }),
       remove: (id: string) => request<{ id: string }>(`/flows/edges/${id}`, { method: 'DELETE' }),
     },
+  },
+
+  public: {
+    lead: (body: { type: 'community' | 'template' | 'account'; name: string; email?: string; phone?: string; message?: string; source?: string }) =>
+      request<{ id: string; status: string }>('/public/leads', { method: 'POST', body: JSON.stringify(body) }),
+    stats: () => request<{ conversations: number; customers: number; documents: number; messages: number }>('/public/stats'),
   },
 
   chat: {

@@ -23,6 +23,14 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL wajib diisi'),
 
+  /** Akun pengelola panel admin (satu akun, disimpan di env produksi). */
+  ADMIN_EMAIL: z.string().trim().email().default('admin@khb.or.id'),
+  ADMIN_NAME: z.string().trim().default('Admin KHB'),
+  ADMIN_PASSWORD: z.string().min(6).default('khb-admin'),
+  /** Rahasia tanda tangan token sesi. WAJIB diganti di produksi. */
+  SESSION_SECRET: z.string().min(16).default('khb-dev-session-secret-change-me'),
+  SESSION_TTL_HOURS: z.coerce.number().int().positive().default(12),
+
   /** Layanan RAG penjawab chat (mis. https://rag.aiones.app). Kosong → tidak ada RAG. */
   RAG_CHAT_API_URL: z.string().trim().transform((v) => v.replace(/\/+$/, '')).default(''),
   RAG_CHAT_API_KEY: z.string().default(''),

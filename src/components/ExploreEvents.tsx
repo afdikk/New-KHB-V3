@@ -1,14 +1,81 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Search, TrendingUp } from "lucide-react";
-import { useState } from "react";
-import { allEvents, eventCategories } from "../data/mockEvents";
+import { useEffect, useMemo, useState } from "react";
+import { allEvents } from "../data/mockEvents";
 import { EventDiscoveryCard } from "./events/EventDiscoveryCard";
+
+interface ExploreEvent {
+  id: string | number;
+  title: string;
+  date: string;
+  location: string;
+  category: string;
+  image: string;
+  popular: boolean;
+  type: "Upcoming" | "Past";
+}
+
+const FALLBACK_IMAGE = "https://picsum.photos/seed/khb-event/800/500";
 
 export default function ExploreEvents() {
   const [activeCategory, setActiveCategory] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [events, setEvents] = useState<ExploreEvent[]>(allEvents as ExploreEvent[]);
 
-  const filteredEvents = allEvents.filter(event => {
+  // Ambil agenda dari database; bila API kosong/gagal, pakai data contoh agar
+  // halaman tetap tampil (mis. saat backend dimatikan).
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/v1/public/events");
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          data?: Array<{
+            id: string;
+            title: string;
+            slug: string;
+            category: string;
+            location: string | null;
+            startsAt: string;
+            imageUrl: string | null;
+          }>;
+        };
+        const rows = payload.data ?? [];
+        if (!active || rows.length === 0) return;
+        setEvents(
+          rows.map((row) => ({
+            id: row.slug,
+            title: row.title,
+            date: row.startsAt.slice(0, 10),
+            location: row.location ?? "Bandung",
+            category: row.category,
+            image: row.imageUrl ?? FALLBACK_IMAGE,
+            popular: false,
+            type: new Date(row.startsAt).getTime() >= Date.now() ? "Upcoming" : "Past",
+          })),
+        );
+      } catch {
+        // biarkan data contoh
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(events.map((event) => event.category))).map((name) => ({
+        name,
+        image:
+          events.find((event) => event.category === name)?.image ??
+          "https://picsum.photos/seed/khb-category/400/400",
+      })),
+    [events],
+  );
+
+  const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === "Semua" || event.category === activeCategory;
     return matchesSearch && matchesCategory;
@@ -46,7 +113,7 @@ export default function ExploreEvents() {
               <h2 className="text-2xl font-bold text-dark">Kategori Populer</h2>
             </div>
             <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 no-scrollbar">
-              {eventCategories.map((cat, idx) => (
+              {categories.map((cat, idx) => (
                 <motion.button
                   key={cat.name}
                   initial={{ opacity: 0, y: 20 }}

@@ -217,7 +217,7 @@ export default function RequestTemplatePage() {
                   backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', 
                   backgroundSize: "cover",
                   backgroundBlendMode: "overlay",
-                  backgroundOpacity: 0.08
+                  opacity: 0.92
                 }}
               >
                 <div className="self-center bg-white/90 backdrop-blur-sm text-[8px] text-slate-500 px-3 py-1 rounded shadow-sm mb-4 max-w-[85%] text-center font-medium border border-slate-100 select-none">

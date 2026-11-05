@@ -46,10 +46,14 @@ import EditProfilePage from './pages/EditProfilePage';
 import IntegrasiPage from './pages/IntegrasiPage';
 
 import AppLayout from './components/AppLayout';
+import { ToastProvider } from './components/Toast';
+import { AuthProvider, RequireAuth } from './context/AuthContext';
 
 export default function AdminApp() {
   return (
-    <Routes>
+    <AuthProvider>
+      <ToastProvider>
+      <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
@@ -70,7 +74,7 @@ export default function AdminApp() {
       <Route path="/admin/embed/:slug" element={<EmbedChatPage />} />
 
       {/* Panel admin */}
-      <Route element={<AppLayout />}>
+      <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
         <Route path="/admin/dashboard" element={<DashboardPage />} />
         <Route path="/admin/getting-started" element={<GettingStartedPage />} />
         <Route path="/admin/chat" element={<ChatPage />} />
@@ -97,6 +101,8 @@ export default function AdminApp() {
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </ToastProvider>
+    </AuthProvider>
   );
 }

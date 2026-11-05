@@ -478,6 +478,58 @@ async function main() {
     ].map((notification) => prisma.notification.create({ data: { workspaceId: workspace.id, ...notification } })),
   );
 
+
+  // ── Agenda/event untuk landing page ───────────────────────
+  await prisma.event.deleteMany({ where: { workspaceId: workspace.id } });
+  await prisma.event.createMany({
+    data: [
+      {
+        workspaceId: workspace.id,
+        title: 'Halal Fest Bandung 2026',
+        slug: 'halal-fest-bandung-2026',
+        category: 'Festival',
+        description:
+          'Pameran produk halal UMKM Bandung, talkshow sertifikasi, dan konsultasi gratis bersama pendamping halal KHB.',
+        location: 'Balai Kota Bandung, Jawa Barat',
+        startsAt: new Date('2026-02-14T08:00:00+07:00'),
+        endsAt: new Date('2026-02-15T17:00:00+07:00'),
+      },
+      {
+        workspaceId: workspace.id,
+        title: 'Workshop Self Declare untuk UMKM',
+        slug: 'workshop-self-declare-umkm',
+        category: 'Pelatihan',
+        description:
+          'Praktik mengisi aplikasi SIHALAL, menyiapkan dokumen, dan memahami kriteria self declare gratis.',
+        location: 'Sekretariat KHB, Bandung',
+        startsAt: new Date('2026-01-24T09:00:00+07:00'),
+        endsAt: new Date('2026-01-24T15:00:00+07:00'),
+      },
+      {
+        workspaceId: workspace.id,
+        title: 'Pendampingan PPH Batch 12',
+        slug: 'pendampingan-pph-batch-12',
+        category: 'Pendampingan',
+        description:
+          'Pendampingan proses produk halal bersama PPH KHB: verifikasi dokumen sampai sidang fatwa.',
+        location: 'Online (Zoom)',
+        startsAt: new Date('2026-01-10T13:00:00+07:00'),
+        endsAt: new Date('2026-01-10T16:00:00+07:00'),
+      },
+      {
+        workspaceId: workspace.id,
+        title: 'Business Talk: Naik Kelas dengan Halal',
+        slug: 'business-talk-naik-kelas-dengan-halal',
+        category: 'Seminar',
+        description:
+          'Strategi branding dan perluasan pasar UMKM halal bersama praktisi dan mentor bisnis Bandung.',
+        location: 'Gedung Creative Center, Bandung',
+        startsAt: new Date('2026-03-07T09:00:00+07:00'),
+        endsAt: new Date('2026-03-07T12:00:00+07:00'),
+      },
+    ],
+  });
+
   console.log(`✓ Seed selesai — ${KHB.name} (${WORKSPACE_SLUG}) · ${DOCUMENTS.length} dokumen · ${PRODUCTS.length} produk · ${CHANNELS.length} kanal`);
 }
 

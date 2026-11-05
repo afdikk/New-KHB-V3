@@ -19,6 +19,19 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      // Pisahkan pustaka besar agar halaman landing tidak mengunduh seluruh
+      // panel admin/markdown saat pertama dibuka.
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            markdown: ['react-markdown', 'remark-gfm'],
+            motion: ['motion'],
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { labels } from '../data/khb';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const pathKey = (p: string): string => p.replace('/', '') || 'dashboard';
 
@@ -45,6 +46,7 @@ interface TopbarProps {
 export default function Topbar({ onMenu, onToggleSidebar, sidebarCollapsed = false }: TopbarProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const title = resolveLabel(pathKey(pathname));
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -134,7 +136,8 @@ export default function Topbar({ onMenu, onToggleSidebar, sidebarCollapsed = fal
               role="menuitem"
               onClick={() => {
                 setOpen(false);
-                navigate('/admin/login');
+                logout();
+                navigate('/admin/login', { replace: true });
               }}
             >
               <svg viewBox="0 0 20 20" fill="none"><path d="M8 3H4a1 1 0 00-1 1v12a1 1 0 001 1h4M13 14l4-4-4-4M17 10H7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>

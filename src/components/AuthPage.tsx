@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { submitLead } from "../lib/leads";
 import { motion, AnimatePresence } from "motion/react";
 import { Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,16 +15,43 @@ const GoogleIcon = () => (
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate auth success
-    localStorage.setItem("isJoinedCommunity", "true");
-    window.dispatchEvent(new Event("communityStatusChanged"));
-    navigate("/");
+    const form = e.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    const name = String(data.get("name") ?? "").trim();
+    const email = String(data.get("email") ?? "").trim();
+
+    if (isLogin) {
+      // Akun komunitas belum punya basis data pengguna; masuk hanya sebagai
+      // penanda di peramban. Pendaftaran di bawah tetap tersimpan di server.
+      localStorage.setItem("isJoinedCommunity", "true");
+      window.dispatchEvent(new Event("communityStatusChanged"));
+      navigate("/");
+      return;
+    }
+
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitLead({ type: "account", name, email, source: "/auth" });
+      localStorage.setItem("isJoinedCommunity", "true");
+      window.dispatchEvent(new Event("communityStatusChanged"));
+      setNotice("Pendaftaran terkirim. Tim KHB akan menghubungi Anda.");
+      setTimeout(() => navigate("/"), 900);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pendaftaran gagal, coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -48,6 +76,8 @@ export default function AuthPage() {
               </p>
             </div>
 
+            {error ? <p className="text-sm font-bold text-red-500 bg-red-50 rounded-2xl px-5 py-3">{error}</p> : null}
+            {notice ? <p className="text-sm font-bold text-green-600 bg-green-50 rounded-2xl px-5 py-3">{notice}</p> : null}
             <form onSubmit={handleSubmit} className="space-y-5">
               <AnimatePresence mode="wait">
                 {!isLogin && (
@@ -62,6 +92,7 @@ export default function AuthPage() {
                       <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input 
                         required
+                        name="name"
                         type="text" 
                         placeholder="John Doe"
                         className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
@@ -77,6 +108,7 @@ export default function AuthPage() {
                   <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input 
                     required
+                    name="email"
                     type="email" 
                     placeholder="name@example.com"
                     className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"

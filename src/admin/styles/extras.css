@@ -728,3 +728,7 @@
 .pc-head-history > div { flex: 1; min-width: 0; }
 .pc-head-history .btn { flex: none; }
 
+
+/* Aksi di header halaman (mis. unggah berkas + tambah dokumen) */
+.page-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.page-actions .btn { white-space: nowrap; }

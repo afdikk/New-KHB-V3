@@ -7,7 +7,9 @@ import { corsOrigins, env } from './config/env';
 import { logger } from './common/utils/logger';
 import { requestId } from './common/middleware/request-id';
 import { rateLimit } from './common/middleware/rate-limit';
+import { requireAuth } from './common/middleware/require-auth';
 import { errorHandler, notFoundHandler } from './common/errors/error-handler';
+import { authRouter } from './modules/auth/auth.routes';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes';
 import { chatbotRouter } from './modules/chatbot/chatbot.routes';
 import { knowledgeRouter } from './modules/knowledge/knowledge.routes';
@@ -18,16 +20,20 @@ import { conversationsRouter } from './modules/conversations/conversations.route
 import { notificationsRouter } from './modules/notifications/notifications.routes';
 import { flowsRouter } from './modules/flows/flows.routes';
 import { chatRouter } from './modules/chat/chat.routes';
+import { settingsRouter } from './modules/settings/settings.routes';
+import { publicRouter } from './modules/public/public.routes';
 
-const JSON_BODY_LIMIT = '2mb';
+const JSON_BODY_LIMIT = '12mb';
 
 /**
  * Rakit aplikasi Express — susunan middleware mengikuti backend AiOnesCare
  * (omnicare): helmet → CORS (widget publik reflektif) → JSON → request-id →
  * logger → rate limit berlapis → rute → 404 → error handler.
  *
- * Catatan: login belum punya backend, jadi tidak ada middleware autentikasi.
- * Semua endpoint admin saat ini terbuka di jaringan lokal pengembangan.
+ * Pembagian akses:
+ * - Publik (tanpa token): `/health`, `/api/v1/auth/*`, `/api/v1/chat/*`, `/api/v1/public/*`.
+ * - Admin (wajib `Authorization: Bearer <token>`): dashboard, chatbot, knowledge,
+ *   products, channels, customers, conversations, notifications, flows, settings.
  */
 export function createApp(): express.Express {
   const app = express();
@@ -63,16 +69,22 @@ export function createApp(): express.Express {
     res.json({ status: 'ok', app: env.APP_NAME, env: env.NODE_ENV });
   });
 
-  app.use('/api/v1/dashboard', dashboardRouter);
-  app.use('/api/v1/chatbot', chatbotRouter);
-  app.use('/api/v1/knowledge', knowledgeRouter);
-  app.use('/api/v1/products', productsRouter);
-  app.use('/api/v1/channels', channelsRouter);
-  app.use('/api/v1/customers', customersRouter);
-  app.use('/api/v1/conversations', conversationsRouter);
-  app.use('/api/v1/notifications', notificationsRouter);
-  app.use('/api/v1/flows', flowsRouter);
+  // ── Publik ────────────────────────────────────────────────
+  app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/chat', chatRouter);
+  app.use('/api/v1/public', publicRouter);
+
+  // ── Admin (butuh token sesi) ─────────────────────────────
+  app.use('/api/v1/dashboard', requireAuth, dashboardRouter);
+  app.use('/api/v1/chatbot', requireAuth, chatbotRouter);
+  app.use('/api/v1/knowledge', requireAuth, knowledgeRouter);
+  app.use('/api/v1/products', requireAuth, productsRouter);
+  app.use('/api/v1/channels', requireAuth, channelsRouter);
+  app.use('/api/v1/customers', requireAuth, customersRouter);
+  app.use('/api/v1/conversations', requireAuth, conversationsRouter);
+  app.use('/api/v1/notifications', requireAuth, notificationsRouter);
+  app.use('/api/v1/flows', requireAuth, flowsRouter);
+  app.use('/api/v1/settings', requireAuth, settingsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

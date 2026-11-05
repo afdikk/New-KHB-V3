@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler, created, ok, paginated } from '../../common/http/response';
 import { validate, validated } from '../../common/middleware/validate';
+import { z } from 'zod';
 import { getWorkspace, resolveSlug } from '../../common/workspace';
 import {
   createDocumentSchema,
@@ -19,8 +20,47 @@ import {
   updateDocument,
 } from './knowledge.service';
 import { ensureRagTarget, ragOverview, ragIntegrationInfo } from '../rag-kms/rag.service';
+import { extractText, kindFromName } from './extract';
 
 export const knowledgeRouter = Router();
+
+const uploadSchema = z.object({
+  fileName: z.string().trim().min(3).max(190),
+  title: z.string().trim().min(2).max(150).optional(),
+  category: z.string().trim().max(80).optional(),
+  /** Berkas dalam base64 (tanpa prefix data:). */
+  base64: z.string().min(20),
+});
+
+/**
+ * POST /api/v1/knowledge/upload — unggah PDF/DOCX/TXT dari panel admin.
+ *
+ * Teks diekstrak lebih dulu (RAG hanya mengindeks teks), lalu disimpan sebagai
+ * dokumen pengetahuan dan dikirim ke KMS/knowledge base.
+ */
+knowledgeRouter.post(
+  '/upload',
+  validate(uploadSchema),
+  asyncHandler(async (req, res) => {
+    const workspace = await getWorkspace(resolveSlug(req.header('x-workspace-slug')));
+    const body = validated<{ fileName: string; title?: string; category?: string; base64: string }>(req);
+    const detected = kindFromName(body.fileName);
+    // Model dokumen hanya mengenal 'pdf' | 'text' | 'web'.
+    const kind = detected === 'pdf' ? 'pdf' : 'text';
+    const { text, pages } = await extractText({ fileName: body.fileName, base64: body.base64, kind: detected });
+
+    const row = await createDocument(workspace.id, {
+      title: body.title?.trim() || body.fileName.replace(/\.[a-z0-9]+$/i, ''),
+      category: body.category?.trim() || 'Panduan',
+      kind,
+      content: text,
+      fileName: body.fileName,
+      pages: pages ?? undefined,
+    });
+
+    created(res, row);
+  }),
+);
 
 /** GET /api/v1/knowledge — daftar dokumen + filter + paginasi. */
 knowledgeRouter.get(

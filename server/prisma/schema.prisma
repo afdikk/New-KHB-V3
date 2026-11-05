@@ -96,6 +96,8 @@ model Workspace {
   ragKnowledgeBaseId String?  @map("rag_knowledge_base_id") @db.VarChar(100)
   /// Project organisasi di KMS (https://ragkms.aiones.app) untuk unggah dokumen.
   kmsOrganizationId  String?  @map("kms_organization_id") @db.VarChar(60)
+  /// Preferensi panel admin: tampilan, notifikasi, profil pengelola.
+  preferences        Json?
   createdAt          DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt          DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
@@ -107,6 +109,8 @@ model Workspace {
   documents     KnowledgeDocument[]
   flowNodes     FlowNode[]
   flowEdges     FlowEdge[]
+  leads         Lead[]
+  events        Event[]
   notifications Notification[]
 
   @@map("workspaces")
@@ -335,4 +339,50 @@ model Notification {
 
   @@index([workspaceId, isRead, createdAt(sort: Desc)], map: "idx_notifications_workspace")
   @@map("notifications")
+}
+
+/// Pendaftar dari landing page: gabung komunitas, permintaan template, akun.
+model Lead {
+  id          String  @id @default(uuid()) @db.Char(36)
+  workspaceId String  @map("workspace_id") @db.Char(36)
+  /// 'community' | 'template' | 'account'
+  type        String  @db.VarChar(24)
+  name        String  @db.VarChar(150)
+  email       String? @db.VarChar(190)
+  phone       String? @db.VarChar(40)
+  message     String? @db.Text
+  /// Halaman asal pengiriman (mis. /join-community).
+  source      String? @db.VarChar(120)
+  status      String  @default("Baru") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, type, createdAt(sort: Desc)], map: "idx_leads_workspace_type")
+  @@map("leads")
+}
+
+/// Agenda/event KHB yang tampil di landing page (`/explore-events`).
+model Event {
+  id          String    @id @default(uuid()) @db.Char(36)
+  workspaceId String    @map("workspace_id") @db.Char(36)
+  title       String    @db.VarChar(180)
+  slug        String    @db.VarChar(180)
+  category    String    @default("Pelatihan") @db.VarChar(60)
+  description String?   @db.Text
+  location    String?   @db.VarChar(180)
+  startsAt    DateTime  @map("starts_at") @db.DateTime(3)
+  endsAt      DateTime? @map("ends_at") @db.DateTime(3)
+  imageUrl    String?   @map("image_url") @db.VarChar(400)
+  status      String    @default("published") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, slug], map: "uq_events_workspace_slug")
+  @@index([workspaceId, startsAt(sort: Desc)], map: "idx_events_workspace_start")
+  @@map("events")
 }

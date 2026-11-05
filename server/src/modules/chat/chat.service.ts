@@ -154,14 +154,27 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
     },
   });
 
+  const escalated = result.source === 'handoff' && workspace.settings.autoEscalate;
+
   await prisma.conversation.update({
     where: { id: conversation.id },
     data: {
       lastMessageAt: new Date(),
-      status:
-        result.source === 'handoff' && workspace.settings.autoEscalate ? 'pending_human' : conversation.status,
+      status: escalated ? 'pending_human' : conversation.status,
     },
   });
+
+  // Beri tahu admin di lonceng saat percakapan perlu ditindaklanjuti manusia.
+  if (escalated) {
+    await prisma.notification.create({
+      data: {
+        workspaceId: workspace.id,
+        type: 'chat',
+        title: `Perlu pendamping: ${input.customerName?.trim() || 'Pengunjung web'}`,
+        description: question.slice(0, 160),
+      },
+    });
+  }
 
   return {
     conversationId: conversation.id,

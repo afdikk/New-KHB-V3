@@ -6,7 +6,7 @@ import { Skeleton } from "./shared/Skeleton";
 import { EcosystemSkeleton } from "./shared/CommonSkeletons";
 
 export default function Ecosystem() {
-  const [cmsData, setCmsData] = useState<{ title: string; subtitle: string; items: any[] } | null>(null);
+  const [cmsData, setCmsData] = useState<{ title: string; subtitle: string; image?: string; items: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const staticItems = [

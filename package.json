@@ -13,7 +13,8 @@
     "lint": "tsc --noEmit",
     "api:install": "npm --prefix server install",
     "api:db:push": "npm --prefix server run db:push",
-    "api:db:seed": "npm --prefix server run db:seed"
+    "api:db:seed": "npm --prefix server run db:seed",
+    "test:api": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

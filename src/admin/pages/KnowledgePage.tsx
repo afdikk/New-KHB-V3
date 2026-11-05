@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { api, type DocumentRow } from '../services/api';
 import { formatDateTime, useResource } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
@@ -12,6 +12,8 @@ export default function KnowledgePage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const { data, loading, error, reload } = useResource(
     async () => {
@@ -56,6 +58,41 @@ export default function KnowledgePage() {
     }
   };
 
+  /** Baca berkas PDF/DOCX/TXT lalu kirim ke /knowledge/upload (server mengekstrak teks). */
+  const uploadFile = async (file: File) => {
+    const allowed = /\.(pdf|docx?|txt|md|csv)$/i;
+    if (!allowed.test(file.name)) {
+      notify('Format harus PDF, DOCX, TXT, MD, atau CSV');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      notify('Ukuran berkas maksimal 8 MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let index = 0; index < bytes.length; index += 1) {
+        binary += String.fromCharCode(bytes[index]);
+      }
+      await api.knowledge.upload({
+        fileName: file.name,
+        base64: btoa(binary),
+        category: category === 'Semua' ? 'Panduan' : category,
+      });
+      notify(`${file.name} diunggah dan sedang diindeks`);
+      await Promise.all([reload(), ragState.reload()]);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Gagal mengunggah berkas');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   const reindex = async (row: DocumentRow) => {
     try {
       await api.knowledge.reindex(row.id);
@@ -85,10 +122,31 @@ export default function KnowledgePage() {
           <h1>Knowledge Base</h1>
           <p className="subheading">Dokumen di halaman ini yang dipakai asisten untuk menjawab (jalur RAG).</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>
-          <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
-          {showForm ? 'Tutup Form' : 'Tambah Dokumen'}
-        </button>
+        <div className="page-actions">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.docx,.doc,.txt,.md,.csv"
+            style={{ display: 'none' }}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadFile(file);
+            }}
+          />
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            <svg viewBox="0 0 20 20" fill="none"><path d="M10 13V4m0 0L6.5 7.5M10 4l3.5 3.5M4 14v1.5A1.5 1.5 0 005.5 17h9a1.5 1.5 0 001.5-1.5V14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {uploading ? 'Mengunggah…' : 'Unggah Berkas'}
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowForm((prev) => !prev)}>
+            <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+            {showForm ? 'Tutup Form' : 'Tambah Dokumen'}
+          </button>
+        </div>
       </div>
 
       {showForm ? (

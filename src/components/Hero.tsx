@@ -7,10 +7,12 @@ import { Skeleton } from "./shared/Skeleton";
 
 export default function Hero() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [cmsData, setCmsData] = useState<{ 
-    headline: string; 
+  const [cmsData, setCmsData] = useState<{
+    headline: string;
     subheadline: string;
+    sub_headline?: string;
     backgroundImage?: string;
+    backgroundImages?: string[];
     stats?: { label: string; value: string }[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,7 @@ export default function Hero() {
           if (heroBlock && heroBlock.data) {
             setCmsData({
               headline: heroBlock.data.headline,
+              subheadline: heroBlock.data.sub_headline ?? heroBlock.data.subheadline ?? "",
               sub_headline: heroBlock.data.sub_headline,
               backgroundImage: heroBlock.data.background_image,
               backgroundImages: heroBlock.data.background_images || [],

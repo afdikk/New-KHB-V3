@@ -2,9 +2,12 @@ import { motion } from "motion/react";
 import { Upload, FileText, CheckCircle, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import React, { useState } from "react";
+import { submitLead } from "../lib/leads";
 
 export default function SubmitTemplatePage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [mainCategory, setMainCategory] = useState("Media Elektronik");
   const [subCategory, setSubCategory] = useState("");
 
@@ -13,9 +16,28 @@ export default function SubmitTemplatePage() {
     "Media Cetak": ["X-Banner", "Flyer", "Poster", "Kartu Nama"]
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (submitting) return;
+    const data = new FormData(e.currentTarget as HTMLFormElement);
+    const templateName = String(data.get("templateName") ?? "").trim();
+    const description = String(data.get("description") ?? "").trim();
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitLead({
+        type: "template",
+        name: templateName,
+        message: `${mainCategory} / ${subCategory} — ${description}`,
+        source: "/submit-template",
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengirim template, coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -59,6 +81,7 @@ export default function SubmitTemplatePage() {
                 <label className="text-sm font-bold text-dark ml-2">Nama Template</label>
                 <input 
                   required
+                  name="templateName"
                   type="text" 
                   placeholder="Contoh: Poster Ramadhan Minimalis"
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
@@ -101,6 +124,7 @@ export default function SubmitTemplatePage() {
               <label className="text-sm font-bold text-dark ml-2">Deskripsi Singkat</label>
               <textarea 
                 required
+                name="description"
                 rows={4}
                 placeholder="Jelaskan kegunaan dan fitur template Anda..."
                 className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all resize-none"
@@ -116,9 +140,10 @@ export default function SubmitTemplatePage() {
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-primary text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 hover:bg-primary-dark transition-all flex items-center justify-center gap-3">
+            {error ? <p className="text-sm font-bold text-red-500 bg-red-50 rounded-2xl px-5 py-3">{error}</p> : null}
+            <button type="submit" disabled={submitting} className="w-full bg-primary text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 hover:bg-primary-dark transition-all flex items-center justify-center gap-3 disabled:opacity-60">
               <CheckCircle size={24} />
-              Kirim Template
+              {submitting ? "Mengirim…" : "Kirim Template"}
             </button>
           </form>
         </div>

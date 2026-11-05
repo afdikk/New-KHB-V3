@@ -22,7 +22,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, idx, setShowM
       }`}
     >
       <div className={`shrink-0 ${idx === 0 ? "w-32 h-32" : "w-20 h-20"} ${service.color} text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-current/20 ${idx !== 0 && "mb-8"}`}>
-        {React.cloneElement(service.icon as React.ReactElement, { size: idx === 0 ? 48 : 36 })}
+        {React.cloneElement(service.icon as React.ReactElement<{ size?: number }>, { size: idx === 0 ? 48 : 36 })}
       </div>
       
       <div className={idx === 0 ? "flex-1" : ""}>
