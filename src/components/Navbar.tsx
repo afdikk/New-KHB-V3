@@ -8,9 +8,10 @@ export default function Navbar({ pages = [] }: { pages?: any[] }) {
   const [isJoined, setIsJoined] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Helper to check if a specific page title exists
-  const hasPage = (title: string) => 
-    pages.some((p: any) => p.title?.toLowerCase() === title.toLowerCase());
+  // Helper to check if a specific page title exists. Bila CMS tidak tersedia
+  // (pages kosong), semua menu bawaan tetap ditampilkan.
+  const hasPage = (title: string) =>
+    pages.length === 0 || pages.some((p: any) => p.title?.toLowerCase() === title.toLowerCase());
 
   useEffect(() => {
     const checkStatus = () => {

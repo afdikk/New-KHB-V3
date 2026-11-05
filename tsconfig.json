@@ -1,4 +1,6 @@
 {
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "server"],
   "compilerOptions": {
     "target": "ES2022",
     "experimentalDecorators": true,
@@ -22,6 +24,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"]
   }
 }
