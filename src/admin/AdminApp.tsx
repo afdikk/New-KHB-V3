@@ -13,7 +13,6 @@ import './styles/auth.css';
 import './styles/extras.css';
 import './styles/embed.css';
 
-import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPage from './pages/ForgotPage';
@@ -51,9 +50,9 @@ export default function AdminApp() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
       {/* Halaman publik milik chatbot (dipakai untuk embed di landing) */}
-      <Route path="/admin" element={<LandingPage />} />
       <Route path="/admin/login" element={<LoginPage />} />
       <Route path="/admin/register" element={<RegisterPage />} />
       <Route path="/admin/forgot" element={<ForgotPage />} />
