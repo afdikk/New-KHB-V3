@@ -1,18 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, SOURCE_LABEL, type ChatBoot, type ProductRow } from '../services/api';
-import { MarkdownText } from '../components/ui/MarkdownText';
-import { MicButton } from '../components/MicButton';
+import { api, type ChatBoot, type ProductRow } from '../services/api';
+import { PublicChat } from '../components/PublicChat';
 
-interface ChatMessage {
-  id: string;
-  role: 'bot' | 'user';
-  text: string;
-  source?: 'rag' | 'general' | 'handoff' | 'none';
-  citations?: string[];
-}
-
-const SESSION_KEY = 'khb-session-store';
+/**
+ * Halaman chat publik per organisasi, mis. `/admin/s/khb-bandung`.
+ *
+ * Pengunjung wajib mengisi nama + WhatsApp/email sebelum bertanya, dan
+ * percakapannya tersimpan sebagai riwayat yang bisa dibuka kembali.
+ */
 
 const HALAL_TONE: Record<ProductRow['halal'], string> = {
   certified: 'badge-green',
@@ -27,13 +23,6 @@ export default function StoreChatPage() {
   const [boot, setBoot] = useState<ChatBoot | null>(null);
   const [stats, setStats] = useState({ conversations: 0, customers: 0, documents: 0 });
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [profile, setProfile] = useState({ name: '', contact: '' });
-  const [started, setStarted] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const sessionKey = useRef(localStorage.getItem(SESSION_KEY) ?? '');
-  const bottom = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -55,67 +44,6 @@ export default function StoreChatPage() {
       }
     })();
   }, [store]);
-
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages, sending]);
-
-  const start = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!profile.name.trim() || !profile.contact.trim()) return;
-    setStarted(true);
-    setMessages([
-      {
-        id: 'greeting',
-        role: 'bot',
-        text:
-          boot?.assistant.greeting ??
-          `Halo ${profile.name.split(' ')[0]}! Saya asisten halal KHB. Silakan tanya seputar sertifikasi halal.`,
-      },
-    ]);
-  };
-
-  const send = async (event?: React.FormEvent, preset?: string) => {
-    event?.preventDefault();
-    const text = (preset ?? input).trim();
-    if (!text || sending) return;
-
-    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', text }]);
-    setInput('');
-    setSending(true);
-
-    try {
-      const answer = await api.chat.send({
-        message: text,
-        slug: store,
-        sessionKey: sessionKey.current || undefined,
-        customerName: profile.name.trim() || undefined,
-      });
-      sessionKey.current = answer.sessionKey;
-      localStorage.setItem(SESSION_KEY, answer.sessionKey);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `b-${Date.now()}`,
-          role: 'bot',
-          text: answer.answer,
-          source: answer.source,
-          citations: answer.citations,
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `e-${Date.now()}`,
-          role: 'bot',
-          text: 'Maaf, asisten sedang tidak dapat dihubungi. Silakan coba lagi sebentar lagi.',
-        },
-      ]);
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <div className="store-page">
@@ -139,8 +67,8 @@ export default function StoreChatPage() {
           <h1>Tanya halal, jawabannya bersumber dokumen resmi.</h1>
           <p>
             Asisten edukasi halal Komunitas Halal Bandung membantu pelaku UMKM memahami sertifikasi halal,
-            self declare, dan kelengkapan dokumen. Bila dokumen belum memuat jawabannya, asisten menjawab
-            dari pengetahuan umum dan menandainya secara jelas.
+            self declare, dan kelengkapan dokumen. Isi data diri dulu supaya percakapan Anda tersimpan dan
+            bisa dilanjutkan kapan saja.
           </p>
           <div className="store-stats">
             <div><strong>{stats.conversations.toLocaleString('id-ID')}</strong><span>percakapan</span></div>
@@ -154,67 +82,10 @@ export default function StoreChatPage() {
             <span className="store-chat-avatar">✦</span>
             <div>
               <strong>{boot?.assistant.name ?? 'Asisten Halal KHB'}</strong>
-              <span><i></i>{sending ? 'Menyusun jawaban…' : 'Siap membantu'}</span>
+              <span><i></i>Siap membantu</span>
             </div>
           </div>
-
-          {!started ? (
-            <form className="store-pretch" onSubmit={start}>
-              <h2>Mulai percakapan</h2>
-              <p>Isi nama dan nomor WhatsApp agar pendamping bisa menindaklanjuti.</p>
-              <label className="field">
-                <span>Nama</span>
-                <input
-                  required
-                  value={profile.name}
-                  onChange={(event) => setProfile({ ...profile, name: event.target.value })}
-                  placeholder="Nama Anda"
-                />
-              </label>
-              <label className="field">
-                <span>WhatsApp / Email</span>
-                <input
-                  required
-                  value={profile.contact}
-                  onChange={(event) => setProfile({ ...profile, contact: event.target.value })}
-                  placeholder="08xxxxxxxxxx"
-                />
-              </label>
-              <button className="btn btn-primary" type="submit" style={{ width: '100%', justifyContent: 'center' }}>
-                Mulai Chat
-              </button>
-              <small>Data hanya dipakai untuk pendampingan. Tanpa akun, tanpa biaya.</small>
-            </form>
-          ) : (
-            <>
-              <div className="store-chat-body">
-                {messages.map((message) => (
-                  <div key={message.id} className={`public-msg ${message.role === 'user' ? 'user' : 'bot'}`}>
-                    <MarkdownText text={message.text} />
-                    {message.source && message.source !== 'none' ? (
-                      <span style={{ display: 'block', marginTop: 4, fontSize: 10.5, opacity: 0.7 }}>
-                        {SOURCE_LABEL[message.source]}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
-                {sending ? <div className="public-msg bot" style={{ width: 60 }}>•••</div> : null}
-                <div ref={bottom}></div>
-              </div>
-              <form className="store-chat-input" onSubmit={(event) => void send(event)}>
-                <input
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  placeholder="Tulis pertanyaan seputar halal..."
-                  aria-label="Tulis pertanyaan"
-                />
-                <MicButton
-                  onText={(text) => setInput((prev) => (prev.trim().length > 0 ? `${prev.trim()} ${text}` : text))}
-                />
-                <button className="btn btn-primary btn-sm" type="submit" disabled={sending}>Kirim</button>
-              </form>
-            </>
-          )}
+          <PublicChat slug={store} />
         </section>
       </main>
 

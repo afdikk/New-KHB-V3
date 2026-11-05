@@ -263,6 +263,21 @@ export interface FlowEdgeRow {
   label: string | null;
 }
 
+export interface VisitorSession {
+  conversationId: string;
+  sessionKey: string;
+  title: string;
+  snippet: string;
+  lastMessageAt: string | null;
+  messageCount: number;
+  status: string;
+}
+
+export interface VisitorIdentity {
+  token: string;
+  customer: { id: string; name: string; contact: string };
+}
+
 export interface ChatAnswer {
   conversationId: string;
   sessionKey: string;
@@ -432,6 +447,19 @@ export const api = {
     history: (sessionKey: string, slug = 'khb-bandung') =>
       request<{ sessionKey: string; messages: Array<Record<string, unknown>> }>(
         `/chat/history?slug=${encodeURIComponent(slug)}&sessionKey=${encodeURIComponent(sessionKey)}`,
+      ),
+    /** Chat publik: identitas wajib sebelum percakapan dimulai. */
+    identity: (body: { name: string; contact: string; slug?: string }) =>
+      request<VisitorIdentity>('/chat/identity', { method: 'POST', body: JSON.stringify(body) }),
+    visitorSend: (body: { token: string; message: string; sessionKey?: string; slug?: string }) =>
+      request<ChatAnswer>('/chat/visitor', { method: 'POST', body: JSON.stringify(body) }),
+    sessions: (token: string, slug = 'khb-bandung') =>
+      request<VisitorSession[]>(
+        `/chat/visitor/sessions?slug=${encodeURIComponent(slug)}&token=${encodeURIComponent(token)}`,
+      ),
+    session: (conversationId: string, token: string, slug = 'khb-bandung') =>
+      request<{ conversationId: string; sessionKey: string; messages: Array<{ id: string; senderType: string; text: string; source: string; createdAt: string }> }>(
+        `/chat/visitor/sessions/${encodeURIComponent(conversationId)}?slug=${encodeURIComponent(slug)}&token=${encodeURIComponent(token)}`,
       ),
   },
 };

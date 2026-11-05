@@ -212,6 +212,10 @@ model Customer {
   id          String    @id @default(uuid()) @db.Char(36)
   workspaceId String    @map("workspace_id") @db.Char(36)
   name        String    @db.VarChar(150)
+  /// WhatsApp/email pengunjung (wajib untuk chat publik).
+  contact     String?   @db.VarChar(190)
+  /// Token peramban untuk membaca riwayat percakapan miliknya sendiri.
+  portalToken String?   @map("portal_token") @db.Char(36)
   business    String?   @db.VarChar(150)
   city        String?   @db.VarChar(80)
   chatCount   Int       @default(0) @map("chat_count")
@@ -226,6 +230,8 @@ model Customer {
   conversations Conversation[]
 
   @@index([workspaceId, status], map: "idx_customers_workspace_status")
+  @@index([workspaceId, contact], map: "idx_customers_contact")
+  @@index([portalToken], map: "idx_customers_portal_token")
   @@map("customers")
 }
 

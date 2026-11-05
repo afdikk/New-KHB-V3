@@ -54,6 +54,8 @@ export interface SendMessageInput {
   message: string;
   sessionKey?: string;
   customerName?: string;
+  /** Pelanggan yang sudah terverifikasi identitasnya (chat publik). */
+  customerId?: string;
 }
 
 export interface SendMessageResult {
@@ -90,7 +92,9 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
     const channel = await prisma.channel.findFirst({
       where: { workspaceId: workspace.id, platform: 'web' },
     });
-    const customer = await touchCustomer(workspace.id, input.customerName);
+    const customer = input.customerId
+      ? await prisma.customer.findUnique({ where: { id: input.customerId } })
+      : await touchCustomer(workspace.id, input.customerName);
     conversation = await prisma.conversation.create({
       data: {
         workspaceId: workspace.id,
@@ -187,6 +191,155 @@ export async function getSessionHistory(slug: string, sessionKey: string) {
   return {
     sessionKey,
     conversationId: conversation.id,
+    messages: conversation.messages.map((message) => ({
+      id: message.id,
+      senderType: message.senderType,
+      text: message.text,
+      source: message.source,
+      citations: (message.citations as string[] | null) ?? [],
+      createdAt: message.createdAt.toISOString(),
+    })),
+  };
+}
+
+// ── Chat publik: identitas wajib + riwayat per pengunjung ────────────────────
+
+const CONTACT_PATTERN = /^(?:[^@\s]+@[^@\s]+\.[^@\s]{2,}|\+?62[0-9]{7,14}|0[0-9]{7,14})$/;
+
+export interface VisitorIdentity {
+  token: string;
+  customer: { id: string; name: string; contact: string };
+}
+
+/**
+ * Simpan identitas pengunjung (nama + WhatsApp/email) dan terbitkan token
+ * peramban. Token inilah yang dipakai untuk membaca riwayat percakapannya —
+ * bukan nomor telepon, agar orang lain tidak bisa membuka riwayat hanya dengan
+ * mengetahui nomor.
+ */
+export async function registerVisitor(input: {
+  slug: string;
+  name: string;
+  contact: string;
+}): Promise<VisitorIdentity> {
+  const name = input.name.trim();
+  const contact = input.contact.trim();
+  if (name.length < 2) throw badRequest('Nama minimal 2 karakter');
+  if (!CONTACT_PATTERN.test(contact.replace(/[\s-]/g, ''))) {
+    throw badRequest('Isi nomor WhatsApp (mis. 0812xxxxxxx) atau email yang valid');
+  }
+
+  const workspace = await getWorkspace(input.slug);
+  const existing = await prisma.customer.findFirst({
+    where: { workspaceId: workspace.id, contact },
+  });
+
+  const customer = existing
+    ? await prisma.customer.update({
+        where: { id: existing.id },
+        data: {
+          name,
+          contact,
+          portalToken: existing.portalToken ?? randomUUID(),
+          lastSeenAt: new Date(),
+        },
+      })
+    : await prisma.customer.create({
+        data: {
+          workspaceId: workspace.id,
+          name,
+          contact,
+          portalToken: randomUUID(),
+          status: 'Baru',
+          lastSeenAt: new Date(),
+        },
+      });
+
+  return {
+    token: customer.portalToken ?? '',
+    customer: { id: customer.id, name: customer.name, contact: customer.contact ?? contact },
+  };
+}
+
+/** Cari pelanggan dari token peramban; menolak bila token tidak dikenal. */
+async function requireVisitor(slug: string, token: string) {
+  const workspace = await getWorkspace(slug);
+  const customer = token
+    ? await prisma.customer.findFirst({ where: { workspaceId: workspace.id, portalToken: token } })
+    : null;
+  if (!customer) throw badRequest('Isi data diri terlebih dahulu sebelum memulai percakapan');
+  return { workspace, customer };
+}
+
+/** Kirim pesan sebagai pengunjung yang identitasnya sudah terdaftar. */
+export async function sendVisitorMessage(input: {
+  slug: string;
+  token: string;
+  message: string;
+  sessionKey?: string;
+}): Promise<SendMessageResult> {
+  const { customer } = await requireVisitor(input.slug, input.token);
+  return sendMessage({
+    slug: input.slug,
+    message: input.message,
+    sessionKey: input.sessionKey,
+    customerName: customer.name,
+    customerId: customer.id,
+  });
+}
+
+export interface VisitorSession {
+  conversationId: string;
+  sessionKey: string;
+  title: string;
+  snippet: string;
+  lastMessageAt: string | null;
+  messageCount: number;
+  status: string;
+}
+
+/** Daftar percakapan milik satu pengunjung (terbaru lebih dulu). */
+export async function listVisitorSessions(slug: string, token: string): Promise<VisitorSession[]> {
+  const { workspace, customer } = await requireVisitor(slug, token);
+
+  const conversations = await prisma.conversation.findMany({
+    where: { workspaceId: workspace.id, customerId: customer.id },
+    orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
+    take: 30,
+    include: {
+      messages: { orderBy: { createdAt: 'asc' }, take: 40 },
+      _count: { select: { messages: true } },
+    },
+  });
+
+  return conversations.map((conversation) => {
+    const firstQuestion = conversation.messages.find((message) => message.senderType === 'customer');
+    const lastMessage = conversation.messages[conversation.messages.length - 1];
+    return {
+      conversationId: conversation.id,
+      sessionKey: conversation.sessionKey ?? conversation.id,
+      title: firstQuestion?.text.slice(0, 70) ?? 'Percakapan baru',
+      snippet: (lastMessage?.text ?? '').replace(/\s+/g, ' ').slice(0, 90),
+      lastMessageAt: conversation.lastMessageAt?.toISOString() ?? null,
+      messageCount: conversation._count.messages,
+      status: conversation.status,
+    };
+  });
+}
+
+/** Transkrip satu percakapan milik pengunjung (dibatasi token-nya). */
+export async function getVisitorSession(slug: string, token: string, conversationId: string) {
+  const { workspace, customer } = await requireVisitor(slug, token);
+
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, workspaceId: workspace.id, customerId: customer.id },
+    include: { messages: { orderBy: { createdAt: 'asc' } } },
+  });
+  if (!conversation) throw badRequest('Percakapan tidak ditemukan');
+
+  return {
+    conversationId: conversation.id,
+    sessionKey: conversation.sessionKey ?? conversation.id,
     messages: conversation.messages.map((message) => ({
       id: message.id,
       senderType: message.senderType,
