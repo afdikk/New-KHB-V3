@@ -79,6 +79,32 @@ Jawaban mempertahankan markdown (heading, bold, list, tabel) dan dirender
 (`src/modules/ai/reply-style.ts`). Pertanyaan di luar topik halal/KHB ditolak
 `topic-guard.ts` tanpa memanggil RAG/LLM.
 
+## Kanal Telegram (satu-satunya kanal)
+
+KHB memakai **Telegram** sebagai kanal percakapan. Alurnya sama seperti OmniCare:
+token bot disimpan terenkripsi (AES-256-GCM, kunci turunan `SESSION_SECRET`),
+webhook didaftarkan otomatis, dan setiap pesan masuk dijawab pipeline AI KHB
+(RAG → retrieval lokal → web → model umum).
+
+1. Buat bot di **@BotFather** (`/newbot`), salin token.
+2. Panel → **Channels → Hubungkan Telegram** → tempel token → **Hubungkan bot**.
+   Server memanggil `getMe`; token salah ditolak dengan pesan dari Telegram.
+3. Isi `PUBLIC_BASE_URL` dengan alamat HTTPS publik (mis. `https://khb.domain.id`),
+   lalu klik **Daftarkan ulang webhook** bila domain berubah. Telegram menolak
+   URL non-HTTPS, jadi di localhost kanal tersimpan sebagai draf.
+4. Kirim pesan ke bot → percakapan muncul di **Percakapan**, pelanggan baru
+   tercatat di **Pelanggan** dengan kontak `telegram:<chat_id>`.
+
+Endpoint:
+
+| Endpoint | Akses | Keterangan |
+| --- | --- | --- |
+| `POST /api/v1/channels/:id/telegram` | admin | validasi token + simpan + daftar webhook |
+| `POST /api/v1/channels/:id/telegram/verify` | admin | cek `getMe` + status webhook |
+| `POST /api/v1/channels/:id/telegram/webhook` | admin | daftarkan ulang webhook |
+| `DELETE /api/v1/channels/:id/telegram` | admin | lepas webhook + hapus token |
+| `POST /api/v1/telegram/webhook/:channelId` | publik | menerima update Telegram (header `X-Telegram-Bot-Api-Secret-Token`) |
+
 ## Basis pengetahuan
 
 - **Tambah teks**: `/admin/knowledge-base` -> "Tambah Dokumen".

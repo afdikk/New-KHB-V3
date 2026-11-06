@@ -181,11 +181,13 @@ Apakah KHB menerbitkan sertifikat? Tidak. Sertifikat diterbitkan BPJPH; KHB berp
 ];
 
 /** Kanal percakapan yang mewakili kanal resmi KHB. */
+/**
+ * KHB hanya memakai Telegram (permintaan pengguna). Kanal dibuat sebagai draf
+ * tanpa token — admin menempelkan token bot di panel Channels, lalu webhook
+ * didaftarkan otomatis.
+ */
 const CHANNELS = [
-  { platform: 'whatsapp' as const, name: 'WhatsApp KHB', handle: KHB.whatsapp, status: 'active' as const, messageCount: 1_248 },
-  { platform: 'web' as const, name: 'Widget Website KHB', handle: 'halalbandung.com', status: 'active' as const, messageCount: 386 },
-  { platform: 'instagram' as const, name: 'Instagram KHB', handle: '@komunitashalalbandung', status: 'active' as const, messageCount: 214 },
-  { platform: 'telegram' as const, name: 'Telegram KHB', handle: '@khbbot', status: 'draft' as const, messageCount: 0 },
+  { platform: 'telegram' as const, name: 'Telegram KHB', handle: null, status: 'draft' as const, messageCount: 0 },
 ];
 
 /** Produk UMKM binaan (contoh katalog — silakan ganti dengan data asli). */
@@ -323,12 +325,12 @@ async function main() {
           handle: channel.handle,
           status: channel.status,
           messageCount: channel.messageCount,
-          lastSyncAt: channel.status === 'active' ? new Date() : null,
+          lastSyncAt: null,
         },
       }),
     ),
   );
-  const webChannel = channels.find((channel) => channel.platform === 'web') ?? channels[0];
+  const webChannel = channels.find((channel) => channel.platform === 'telegram') ?? channels[0];
 
   console.log('◇ Menanam produk…');
   await Promise.all(

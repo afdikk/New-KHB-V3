@@ -202,6 +202,15 @@ model Channel {
   lastSyncAt   DateTime?       @map("last_sync_at") @db.DateTime(3)
   messageCount Int             @default(0) @map("message_count")
 
+  /// ID akun di platform (Telegram: id bot numerik).
+  externalAccountId String? @map("external_account_id") @db.VarChar(120)
+  /// Kredensial terenkripsi AES-256-GCM (Telegram: {"botToken":"..."}).
+  credentials       String? @db.Text
+  /// Token rahasia webhook (dikirim Telegram di header X-Telegram-Bot-Api-Secret-Token).
+  webhookSecret     String? @map("webhook_secret") @db.VarChar(64)
+  statusMessage     String? @map("status_message") @db.VarChar(255)
+  lastVerifiedAt    DateTime? @map("last_verified_at") @db.DateTime(3)
+
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 

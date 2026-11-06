@@ -203,6 +203,13 @@ export interface ChannelRow {
   lastSyncAt: string | null;
   messageCount: number;
   conversations: number;
+  /** @username bot Telegram (null bila belum terhubung). */
+  botUsername: string | null;
+  webhookConfigured: boolean;
+  lastError: string | null;
+  lastVerifiedAt: string | null;
+  /** URL webhook yang terdaftar di Telegram. */
+  webhookUrl: string;
 }
 
 export interface CustomerRow {
@@ -433,11 +440,24 @@ export const api = {
 
   channels: {
     list: () => request<ChannelRow[]>('/channels'),
-    create: (body: { platform: string; name: string; handle?: string; status?: string }) =>
-      request<ChannelRow>('/channels', { method: 'POST', body: JSON.stringify(body) }),
+    create: (body: { name: string; handle?: string }) =>
+      request<ChannelRow>('/channels', { method: 'POST', body: JSON.stringify({ ...body, platform: 'telegram' }) }),
     update: (id: string, body: Partial<ChannelRow>) =>
       request<ChannelRow>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     remove: (id: string) => request<{ id: string }>(`/channels/${id}`, { method: 'DELETE' }),
+
+    /** Hubungkan bot: token divalidasi ke Telegram, webhook didaftarkan otomatis. */
+    connectTelegram: (id: string, body: { botToken?: string; name?: string }) =>
+      request<ChannelRow>(`/channels/${id}/telegram`, { method: 'POST', body: JSON.stringify(body) }),
+    /** Uji token + status webhook (tombol "Uji koneksi"). */
+    verifyTelegram: (id: string) =>
+      request<ChannelRow>(`/channels/${id}/telegram/verify`, { method: 'POST' }),
+    /** Daftarkan ulang webhook setelah domain/HTTPS berubah. */
+    refreshWebhook: (id: string) =>
+      request<ChannelRow>(`/channels/${id}/telegram/webhook`, { method: 'POST' }),
+    /** Lepas webhook + hapus token tersimpan. */
+    disconnectTelegram: (id: string) =>
+      request<ChannelRow>(`/channels/${id}/telegram`, { method: 'DELETE' }),
   },
 
   customers: {

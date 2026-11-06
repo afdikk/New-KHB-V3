@@ -22,6 +22,7 @@ import { flowsRouter } from './modules/flows/flows.routes';
 import { chatRouter } from './modules/chat/chat.routes';
 import { settingsRouter } from './modules/settings/settings.routes';
 import { publicRouter } from './modules/public/public.routes';
+import { telegramRouter } from './modules/telegram/telegram.routes';
 
 const JSON_BODY_LIMIT = '12mb';
 
@@ -73,6 +74,8 @@ export function createApp(): express.Express {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/chat', chatRouter);
   app.use('/api/v1/public', publicRouter);
+  // Webhook Telegram: publik, diverifikasi lewat secret token per kanal.
+  app.use('/api/v1/telegram', telegramRouter);
 
   // ── Admin (butuh token sesi) ─────────────────────────────
   app.use('/api/v1/dashboard', requireAuth, dashboardRouter);
