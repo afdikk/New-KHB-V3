@@ -45,10 +45,10 @@ export default function ChatLauncher({ slug = 'khb-bandung' }: { slug?: string }
     <>
       {open ? (
         <div
-          className={`fixed z-[9998] flex flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl transition-all
+          className={`fixed z-[9998] flex flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl
             ${expanded
-              ? 'inset-3 rounded-2xl sm:inset-6'
-              : 'inset-x-0 bottom-0 top-16 rounded-t-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[620px] sm:w-[400px] sm:rounded-2xl'}`}
+              ? 'inset-x-2 bottom-2 top-16 rounded-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[760px] sm:max-h-[calc(100vh-7rem)] sm:w-[560px] sm:max-w-[calc(100vw-3rem)] sm:rounded-2xl'
+              : 'inset-x-0 bottom-0 top-16 rounded-t-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[620px] sm:max-h-[calc(100vh-7rem)] sm:w-[400px] sm:rounded-2xl'}`}
         >
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
             <div className="flex items-center gap-2">
