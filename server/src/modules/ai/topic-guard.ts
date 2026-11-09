@@ -86,6 +86,34 @@ const GENERATION_REQUEST =
 const SMALL_TALK =
   /^(?:assalamu|salam|halo|hai|hi|selamat (?:pagi|siang|sore|malam)|terima kasih|makasih|thanks|ok|oke|siap|baik|ya|test|tes)[\s!.?]*$/i;
 
+/**
+ * Kata yang lazim hanya dipakai untuk menyapa/menutup percakapan.
+ *
+ * Dipakai agar variasi wajar seperti "assalamualaikum", "makasih ya kak",
+ * "pagi min", atau "oke siap" tidak ikut ditolak sebagai pertanyaan di luar topik.
+ */
+const SMALL_TALK_WORDS = new Set([
+  'assalamualaikum', 'assalamu', 'alaikum', 'alaikumussalam', 'warahmatullahi', 'wabarakatuh',
+  'waalaikumsalam', 'waalaikumussalam', 'salam', 'salamualaikum',
+  'halo', 'hallo', 'helo', 'hai', 'hi', 'hei', 'pagi', 'siang', 'sore', 'malam', 'subuh', 'selamat',
+  'terima', 'kasih', 'makasih', 'makasi', 'mksh', 'trims', 'thanks', 'thank', 'you', 'tq', 'thx',
+  'ok', 'oke', 'okey', 'okay', 'sip', 'siap', 'baik', 'boleh', 'bisa', 'ya', 'iya', 'yup', 'yoi',
+  'betul', 'benar', 'kak', 'ka', 'min', 'admin', 'mas', 'mbak', 'pak', 'bu', 'bapak', 'ibu', 'bang', 'gan', 'bos',
+  'semua', 'semuanya', 'test', 'tes', 'testing', 'ping', 'mau', 'minta', 'tanya', 'nanya', 'dong', 'nih', 'deh',
+]);
+
+/** True bila seluruh pesan hanya berisi sapaan/penutup (maks. 5 kata). */
+function isSmallTalk(text: string): boolean {
+  if (SMALL_TALK.test(text)) return true;
+  const words = text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
+  if (words.length === 0 || words.length > 5) return false;
+  return words.every((word) => SMALL_TALK_WORDS.has(word));
+}
+
 export type TopicVerdict = 'halal' | 'smalltalk' | 'offtopic';
 
 /** Gabungkan pertanyaan + beberapa giliran terakhir sebagai konteks topik. */
@@ -111,7 +139,7 @@ export function classifyTopic(
 ): TopicVerdict {
   const text = question.trim();
   if (text.length === 0) return 'smalltalk';
-  if (SMALL_TALK.test(text)) return 'smalltalk';
+  if (isSmallTalk(text)) return 'smalltalk';
   if (CODE_TERMS.test(text)) return 'offtopic';
   if (GENERATION_REQUEST.test(text)) return 'offtopic';
 

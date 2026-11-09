@@ -51,7 +51,7 @@ export async function askLlm(params: {
     { role: 'user', content: params.user },
   ];
 
-  const call = async (): Promise<LlmAnswer> => {
+  const call = async (maxTokens: number): Promise<LlmAnswer> => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), env.LLM_TIMEOUT_MS);
     try {
@@ -65,7 +65,7 @@ export async function askLlm(params: {
           model: env.LLM_MODEL,
           messages,
           temperature: params.temperature ?? env.LLM_TEMPERATURE,
-          max_tokens: params.maxTokens ?? 700,
+          max_tokens: maxTokens,
         }),
         signal: controller.signal,
       });
@@ -75,7 +75,13 @@ export async function askLlm(params: {
         throw new LlmError(`LLM merespons ${response.status} ${detail.slice(0, 200)}`, response.status);
       }
 
-      const payload = (await response.json()) as ChatCompletionResponse;
+      // Gateway OpenAI-compatible kadang menempelkan ekor streaming
+      // (`data: [DONE]`) setelah JSON selesai — harus dipotong sebelum parse.
+      const raw = await response.text();
+      const cut = raw.indexOf('data:');
+      const json = (cut > 0 ? raw.slice(0, cut) : raw).trim();
+
+      const payload = JSON.parse(json) as ChatCompletionResponse;
       const text = payload.choices?.[0]?.message?.content?.trim() ?? '';
       if (text.length === 0) throw new LlmError('LLM mengembalikan jawaban kosong', 502);
       return { text, model: payload.model ?? env.LLM_MODEL };
@@ -84,7 +90,25 @@ export async function askLlm(params: {
     }
   };
 
-  return withRetry(call, {
+  /**
+   * Model penalaran (mis. deepseek-v4.1-flash) bisa menghabiskan seluruh
+   * anggaran token untuk berpikir sehingga `content` kosong. Bila itu terjadi,
+   * ulangi sekali dengan anggaran lebih besar.
+   */
+  const callWithBudget = async (): Promise<LlmAnswer> => {
+    const budget = params.maxTokens ?? 700;
+    try {
+      return await call(budget);
+    } catch (error) {
+      const empty = error instanceof LlmError && error.status === 502;
+      if (!empty) throw error;
+      const bigger = Math.min(Math.max(budget * 4, 1600), 3200);
+      logger.warn({ budget, bigger }, 'Jawaban model kosong (token habis untuk penalaran) — ulangi dengan anggaran lebih besar');
+      return call(bigger);
+    }
+  };
+
+  return withRetry(callWithBudget, {
     attempts: 2,
     delayMs: 800,
     // 5xx / 429 / timeout layak dicoba ulang; 4xx lain tidak.

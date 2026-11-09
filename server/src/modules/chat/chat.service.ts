@@ -140,6 +140,7 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
     question,
     history,
     documents,
+    customerName: conversation.customerName ?? input.customerName,
   });
 
   const botMessage = await prisma.message.create({

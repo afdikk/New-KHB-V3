@@ -298,6 +298,7 @@ export async function handleTelegramUpdate(
     question: text,
     history,
     documents,
+    customerName: displayName,
   });
 
   const botMessage = await prisma.message.create({

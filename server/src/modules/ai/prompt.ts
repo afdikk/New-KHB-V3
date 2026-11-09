@@ -117,3 +117,37 @@ export function buildGeneralPrompt(params: {
 
   return { system, user };
 }
+
+/**
+ * Mode obrolan ringan (sapaan, terima kasih, "oke").
+ *
+ * Tidak ada kalimat jadi: model membalas seperti orang sungguhan, 1–2 kalimat.
+ */
+export function buildSmalltalkPrompt(params: {
+  assistantName: string;
+  tone: string;
+  question: string;
+  customerName?: string;
+  history: ChatTurn[];
+}): { system: string; user: string } {
+  const { assistantName, tone, question, customerName, history } = params;
+  const name = (customerName ?? '').trim();
+
+  const system = [
+    `Kamu ${assistantName}, asisten edukasi halal Komunitas Halal Bandung yang sedang membalas chat pelanggan.`,
+    `Gaya bicara: ${tone}, seperti orang sungguhan — bukan template atau daftar kemampuan.`,
+    'Pesan pelanggan ini hanya obrolan ringan (sapaan, terima kasih, oke, singkat). Balas 1–2 kalimat saja: natural, hangat, tanpa daftar, tanpa menjelaskan layanan panjang lebar.',
+    'Bila pelanggan memberi salam, balas salamnya. Bila wajar, ajak singkat untuk bertanya soal halal.',
+    name ? `Nama pelanggan: ${name}. Sebut namanya bila terasa wajar.` : 'Nama pelanggan belum diketahui, jadi tidak perlu menyebut nama.',
+    'Jangan mengarang nomor kontak, janji, atau informasi halal apa pun di balasan ini.',
+  ].join('\n');
+
+  const user = [
+    history.length > 0 ? `Riwayat singkat:\n${historyBlock(history)}` : '',
+    `Pesan pengguna: ${question}`,
+  ]
+    .filter((part) => part.length > 0)
+    .join('\n\n');
+
+  return { system, user };
+}

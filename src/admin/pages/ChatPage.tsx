@@ -33,9 +33,6 @@ export default function ChatPage() {
       try {
         const data = await api.chat.boot();
         setBoot(data);
-        setMessages((prev) =>
-          prev.length > 0 ? prev : [{ id: 'greeting', role: 'bot', text: data.assistant.greeting }],
-        );
       } catch {
         notify('Backend belum siap — jalankan npm run dev');
       }

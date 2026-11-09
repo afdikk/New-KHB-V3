@@ -1,5 +1,5 @@
 import { logger } from '../../common/utils/logger';
-import { buildGeneralPrompt, buildGroundedPrompt, buildWebPrompt, type ChatTurn } from './prompt';
+import { buildGeneralPrompt, buildGroundedPrompt, buildSmalltalkPrompt, buildWebPrompt, type ChatTurn } from './prompt';
 import { askLlm, isLlmEnabled } from './llm.client';
 import { queryRag } from '../rag-kms/rag.service';
 import { GROUNDED_THRESHOLD, retrieveLocally, toCitations, type RetrievedChunk } from './retrieval';
@@ -11,6 +11,8 @@ export type AnswerSource = 'rag' | 'general' | 'handoff' | 'none';
 
 export interface AnswerSettings {
   assistantName: string;
+  /** Sapaan yang diatur admin — dipakai sebagai jaring pengaman bila model tak tersedia. */
+  greeting?: string;
   tone: string;
   fallbackMode: string;
   allowGeneralKnowledge: boolean;
@@ -33,6 +35,8 @@ export interface AnswerContext {
   question: string;
   history: ChatTurn[];
   documents: AnswerDocument[];
+  /** Nama pelanggan — dipakai untuk sapaan pada balasan pertama. */
+  customerName?: string;
 }
 
 export interface AnswerResult {
@@ -118,6 +122,82 @@ async function answerFromModel(settings: AnswerSettings, question: string, histo
 }
 
 /**
+ * Balasan obrolan ringan (sapaan/terima kasih) — dibuat model agar natural.
+ *
+ * Tidak memakai kalimat template. Bila LLM tidak tersedia, dipakai satu kalimat
+ * pendek sebagai jaring pengaman supaya pelanggan tetap dapat balasan.
+ */
+async function smalltalkAnswer(context: AnswerContext): Promise<AnswerResult> {
+  const { settings, question, history, customerName } = context;
+
+  if (isLlmEnabled()) {
+    try {
+      const prompt = buildSmalltalkPrompt({
+        assistantName: settings.assistantName,
+        tone: settings.tone,
+        question,
+        customerName,
+        history,
+      });
+      const result = await askLlm({
+        system: prompt.system,
+        user: prompt.user,
+        temperature: Math.min(Math.max(settings.temperature, 0.5), 0.85),
+        maxTokens: 500,
+      });
+      const clean = sanitizeAnswer(result.text);
+      if (clean.length > 0) {
+        return {
+          answer: clean,
+          source: 'none',
+          grounded: false,
+          citations: [],
+          confidence: 0,
+          note: 'sapaan',
+          route: 'guard',
+        };
+      }
+    } catch (error) {
+      logger.warn(
+        { err: error instanceof Error ? error.message : error },
+        'LLM gagal membalas sapaan — memakai balasan pendek',
+      );
+    }
+  }
+
+  return {
+    answer: settings.greeting?.trim() || "Wa'alaikumussalam! Ada yang bisa saya bantu soal halal?",
+    source: 'none',
+    grounded: false,
+    citations: [],
+    confidence: 0,
+    note: 'sapaan',
+    route: 'guard',
+  };
+}
+
+/**
+ * Sapaan pembuka pada balasan PERTAMA sebuah percakapan.
+ *
+ * Pelanggan yang baru bertanya disapa lebih dulu (memakai nama depan bila ada)
+ * sebelum jawaban diberikan. Balasan yang memang sudah berupa sapaan/obrolan
+ * ringan tidak disapa dua kali.
+ */
+function withOpeningGreeting(result: AnswerResult, context: AnswerContext): AnswerResult {
+  if (context.history.length > 0) return result;
+  if (result.note === 'sapaan') return result;
+
+  const answer = result.answer.trim();
+  if (!answer) return result;
+  if (/^(?:assalamu|salam|wa'?alaikum|halo|hai|hi\b|selamat)/i.test(answer)) return result;
+
+  const name = (context.customerName ?? '').trim();
+  const firstName = name && !/^(?:pengunjung|tamu|guest)/i.test(name) ? name.split(/\s+/)[0] : '';
+  const greeting = `Assalamu'alaikum${firstName ? `, ${firstName}` : ''}!`;
+  return { ...result, answer: `${greeting}\n\n${answer}` };
+}
+
+/**
  * Inti logika penjawaban asisten halal KHB.
  *
  * Urutan percobaan:
@@ -130,7 +210,7 @@ async function answerFromModel(settings: AnswerSettings, question: string, histo
  * Semua keluaran dibersihkan lewat sanitizeAnswer: tanpa sitasi, tanpa basa-basi,
  * tanpa narasi proses pencarian.
  */
-export async function answerQuestion(context: AnswerContext): Promise<AnswerResult> {
+async function resolveAnswer(context: AnswerContext): Promise<AnswerResult> {
   const { settings, question, history, documents } = context;
 
   // 0) Batas topik: asisten hanya melayani pertanyaan halal/KHB.
@@ -147,14 +227,7 @@ export async function answerQuestion(context: AnswerContext): Promise<AnswerResu
     };
   }
   if (verdict === 'smalltalk') {
-    return {
-      answer: `Wa'alaikumussalam. Saya ${settings.assistantName} — silakan tanya soal sertifikasi halal, self declare, bahan produk, atau syarat dokumen.`,
-      source: 'none',
-      grounded: false,
-      citations: [],
-      confidence: 0,
-      route: 'guard',
-    };
+    return smalltalkAnswer(context);
   }
 
   // 1) RAG eksternal — dokumen dikelola lewat KMS.
@@ -246,4 +319,9 @@ export async function answerQuestion(context: AnswerContext): Promise<AnswerResu
     note: settings.fallbackMode,
     route: 'handoff',
   };
+}
+
+/** Titik masuk tunggal: jawab pertanyaan, lalu sapu pelanggan di balasan pertama. */
+export async function answerQuestion(context: AnswerContext): Promise<AnswerResult> {
+  return withOpeningGreeting(await resolveAnswer(context), context);
 }

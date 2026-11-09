@@ -28,9 +28,6 @@ interface Identity {
 
 type Screen = 'chat' | 'history';
 
-const GREETING_FALLBACK =
-  "Assalamu'alaikum! Saya Asisten Halal KHB. Silakan tanya seputar sertifikasi halal, self declare, atau dokumen UMKM.";
-
 /** Dipakai bila backend belum siap, agar pengunjung tetap punya titik mulai. */
 const STARTERS_FALLBACK = [
   'Bagaimana cara mendaftar sertifikasi halal?',
@@ -102,7 +99,9 @@ export function PublicChat({
   );
   const [search, setSearch] = useState('');
 
-  const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'greeting', role: 'bot', text: GREETING_FALLBACK }]);
+  // Percakapan mulai kosong: asisten menyapa pada balasan pertanyaan pertama,
+  // bukan lewat bubble pembuka yang panjang.
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -113,15 +112,9 @@ export function PublicChat({
   useEffect(() => {
     void (async () => {
       try {
-        const data = await api.chat.boot(slug);
-        setBoot(data);
-        setMessages((prev) =>
-          prev.length === 1 && prev[0]?.id === 'greeting'
-            ? [{ id: 'greeting', role: 'bot', text: data.assistant.greeting }]
-            : prev,
-        );
+        setBoot(await api.chat.boot(slug));
       } catch {
-        // biarkan sapaan bawaan
+        // biarkan penyusun pertanyaan bawaan yang tampil
       }
     })();
   }, [slug]);
@@ -165,7 +158,7 @@ export function PublicChat({
       localStorage.setItem(keys.conversation, session.conversationId);
       localStorage.setItem(keys.session, detail.sessionKey);
     } catch {
-      setMessages([{ id: 'greeting', role: 'bot', text: 'Riwayat itu belum bisa dibuka. Coba lagi ya.' }]);
+      setMessages([{ id: 'error', role: 'bot', text: 'Riwayat itu belum bisa dibuka. Coba lagi ya.' }]);
     } finally {
       setLoadingHistory(false);
     }
@@ -177,7 +170,7 @@ export function PublicChat({
     setScreen('chat');
     localStorage.removeItem(keys.session);
     localStorage.removeItem(keys.conversation);
-    setMessages([{ id: 'greeting', role: 'bot', text: boot?.assistant.greeting ?? GREETING_FALLBACK }]);
+    setMessages([]);
   };
 
   const submitIdentity = async (event: React.FormEvent) => {
