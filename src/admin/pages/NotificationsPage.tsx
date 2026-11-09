@@ -1,14 +1,39 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
 import { api, type NotificationRow } from '../services/api';
 import { timeAgo, useResource } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
+import {
+  IconAlert,
+  IconBell,
+  IconChat,
+  IconCheckCircle,
+  IconDocument,
+  IconLink,
+  IconRefresh,
+  IconSettings,
+} from '../components/ui/Icons';
 
-const TYPE_ICON: Record<NotificationRow['type'], string> = {
-  chat: '💬',
-  knowledge: '📄',
-  system: '⚙️',
-  channel: '🔗',
+/** Ikon per jenis notifikasi (menggantikan emoji agar konsisten dengan UI). */
+const TYPE_ICON: Record<NotificationRow['type'], ComponentType<{ className?: string }>> = {
+  chat: IconChat,
+  knowledge: IconDocument,
+  system: IconSettings,
+  channel: IconLink,
 };
+
+/** Kelompokkan notifikasi ke "Hari ini", "Kemarin", lalu tanggal. */
+function dayBucket(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOf(today) - startOf(date)) / 86_400_000);
+
+  if (diffDays <= 0) return 'Hari ini';
+  if (diffDays === 1) return 'Kemarin';
+  if (diffDays < 7) return `${diffDays} hari lalu`;
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 export default function NotificationsPage() {
   const notify = useToast();
@@ -24,6 +49,18 @@ export default function NotificationsPage() {
     if (filter === 'chat') return row.type === 'chat' || row.type === 'channel';
     return true;
   });
+
+  /** Notifikasi dikelompokkan per hari, urutan tetap sesuai data server. */
+  const grouped = useMemo(() => {
+    const buckets: Array<{ label: string; items: NotificationRow[] }> = [];
+    rows.forEach((row) => {
+      const label = dayBucket(row.createdAt);
+      const last = buckets[buckets.length - 1];
+      if (last && last.label === label) last.items.push(row);
+      else buckets.push({ label, items: [row] });
+    });
+    return buckets;
+  }, [rows]);
 
   const markAll = async () => {
     try {
@@ -47,59 +84,129 @@ export default function NotificationsPage() {
 
   return (
     <section className="view active" id="view-notifications">
-      <div className="page-title-row">
-        <div>
-          <div className="eyebrow"><span className="eyebrow-dot"></span> PUSAT NOTIFIKASI</div>
+      <div className="m-head">
+        <div className="m-head-copy">
+          <span className="m-eyebrow">Pusat Notifikasi</span>
           <h1>Notifikasi</h1>
-          <p className="subheading">Pantau aktivitas terbaru dan pembaruan sistem.</p>
+          <p className="m-sub">Pantau aktivitas terbaru dan pembaruan sistem.</p>
         </div>
-        <button className="btn btn-secondary" onClick={() => void markAll()} disabled={unread === 0}>
-          Tandai semua dibaca
-        </button>
-      </div>
-
-      <div className="notif-tabs">
-        <button className={`notif-tab${filter === 'all' ? ' selected' : ''}`} onClick={() => setFilter('all')}>
-          Semua <span className="notif-tab-count">{all.length}</span>
-        </button>
-        <button className={`notif-tab${filter === 'unread' ? ' selected' : ''}`} onClick={() => setFilter('unread')}>
-          Belum dibaca <span className="notif-tab-count unread">{unread}</span>
-        </button>
-        <button className={`notif-tab${filter === 'system' ? ' selected' : ''}`} onClick={() => setFilter('system')}>Sistem</button>
-        <button className={`notif-tab${filter === 'chat' ? ' selected' : ''}`} onClick={() => setFilter('chat')}>Chat</button>
-      </div>
-
-      <div className="notif-list">
-        {rows.map((row) => (
-          <button
-            key={row.id}
-            type="button"
-            className={`notif-item${row.isRead ? '' : ' unread'}`}
-            onClick={() => void open(row)}
-            style={{ width: '100%', textAlign: 'left', border: 0, cursor: 'pointer', background: 'transparent' }}
-          >
-            <div className={`notif-icon ${row.type === 'chat' ? 'green' : row.type === 'knowledge' ? 'blue' : 'amber'}`}>
-              {TYPE_ICON[row.type]}
-            </div>
-            <div className="notif-content">
-              <span className="notif-title">{row.title}</span>
-              <p className="notif-desc">{row.description}</p>
-            </div>
-            <div className="notif-side">
-              <span className="notif-time">{timeAgo(row.createdAt)}</span>
-              {row.isRead ? null : <div className="notif-dot"></div>}
-            </div>
+        <div className="m-head-actions">
+          <button className="m-btn m-btn-ghost" type="button" onClick={() => void reload()} disabled={loading}>
+            <IconRefresh />
+            Muat ulang
           </button>
-        ))}
+          <button className="m-btn m-btn-primary" type="button" onClick={() => void markAll()} disabled={unread === 0}>
+            <IconCheckCircle />
+            Tandai semua dibaca
+          </button>
+        </div>
+      </div>
 
-        {loading ? <p className="knowledge-note">Memuat notifikasi…</p> : null}
-        {error ? (
-          <div className="knowledge-note" style={{ color: '#b91c1c' }}>
-            {error}{' '}
-            <button className="btn btn-secondary btn-sm" style={{ marginLeft: 8 }} onClick={() => void reload()}>Coba lagi</button>
+      <div className="m-card">
+        <div className="m-toolbar">
+          <div className="m-segmented" role="tablist" aria-label="Filter notifikasi">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'all'}
+              className={filter === 'all' ? 'is-active' : ''}
+              onClick={() => setFilter('all')}
+            >
+              Semua <span className="m-count">{all.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'unread'}
+              className={filter === 'unread' ? 'is-active' : ''}
+              onClick={() => setFilter('unread')}
+            >
+              Belum dibaca <span className="m-count">{unread}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'system'}
+              className={filter === 'system' ? 'is-active' : ''}
+              onClick={() => setFilter('system')}
+            >
+              Sistem
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'chat'}
+              className={filter === 'chat' ? 'is-active' : ''}
+              onClick={() => setFilter('chat')}
+            >
+              Chat
+            </button>
           </div>
-        ) : null}
-        {!loading && !error && rows.length === 0 ? <div className="empty-state">Tidak ada notifikasi pada filter ini.</div> : null}
+
+          <span style={{ fontSize: 12, color: 'var(--m-text-3)' }}>
+            {unread > 0 ? `${unread} belum dibaca` : 'Semua sudah dibaca'}
+          </span>
+        </div>
+
+        <div className="m-feed">
+          {grouped.map((group) => (
+            <div key={group.label}>
+              <div className="m-feed-day">{group.label}</div>
+              {group.items.map((row) => {
+                const Icon = TYPE_ICON[row.type] ?? IconBell;
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className={`m-notif${row.isRead ? '' : ' is-unread'}`}
+                    onClick={() => void open(row)}
+                  >
+                    <span className={`m-notif-icon ${row.type}`}>
+                      <Icon />
+                    </span>
+                    <span className="m-notif-body">
+                      <span className="m-notif-title">{row.title}</span>
+                      <p className="m-notif-desc">{row.description}</p>
+                    </span>
+                    <span className="m-notif-side">
+                      <span className="m-notif-time">{timeAgo(row.createdAt)}</span>
+                      {row.isRead ? null : <span className="m-notif-dot" aria-label="Belum dibaca" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          {error ? (
+            <div className="m-alert">
+              <IconAlert />
+              <span>{error}</span>
+              <button className="m-btn m-btn-ghost m-btn-sm" style={{ marginLeft: 'auto' }} onClick={() => void reload()}>
+                Coba lagi
+              </button>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="m-empty">
+              <span className="m-empty-icon"><IconRefresh /></span>
+              <strong>Memuat notifikasi…</strong>
+            </div>
+          ) : null}
+
+          {!loading && !error && rows.length === 0 ? (
+            <div className="m-empty">
+              <span className="m-empty-icon"><IconBell /></span>
+              <strong>Tidak ada notifikasi</strong>
+              <p>
+                {filter === 'unread'
+                  ? 'Semua notifikasi sudah Anda baca. Kerja bagus!'
+                  : 'Belum ada aktivitas pada filter ini.'}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );

@@ -3,18 +3,29 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, HALAL_LABEL, type ProductRow } from '../services/api';
 import { useResource } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
+import {
+  IconAlert,
+  IconBox,
+  IconCheckCircle,
+  IconClock,
+  IconEdit,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconTrash,
+} from '../components/ui/Icons';
 
 const FILTERS = [
-  { label: 'Semua', value: '' },
-  { label: 'Tersertifikasi', value: 'certified' },
-  { label: 'Proses', value: 'process' },
-  { label: 'Belum', value: 'none' },
+  { label: 'Semua', value: '', countKey: 'all' },
+  { label: 'Tersertifikasi', value: 'certified', countKey: 'certified' },
+  { label: 'Proses', value: 'process', countKey: 'process' },
+  { label: 'Belum', value: 'none', countKey: 'none' },
 ] as const;
 
-const HALAL_TONE: Record<ProductRow['halal'], string> = {
-  certified: 'badge-green',
-  process: 'badge-amber',
-  none: 'badge-slate',
+const HALAL_PILL: Record<ProductRow['halal'], string> = {
+  certified: 'green',
+  process: 'amber',
+  none: 'slate',
 };
 
 export default function ProductListPage() {
@@ -45,107 +56,204 @@ export default function ProductListPage() {
 
   return (
     <section className="view active" id="view-products">
-      <div className="page-title-row">
-        <div>
-          <div className="eyebrow"><span className="eyebrow-dot"></span> KATALOG UMKM</div>
+      <div className="m-head">
+        <div className="m-head-copy">
+          <span className="m-eyebrow">Katalog UMKM</span>
           <h1>Produk</h1>
-          <p className="subheading">Data produk tersimpan di database dan dipakai sebagai konteks jawaban asisten.</p>
+          <p className="m-sub">
+            Data produk tersimpan di database dan dipakai sebagai konteks jawaban asisten.
+          </p>
         </div>
-        <Link className="btn btn-primary" to="/admin/products/new">+ Tambah Produk</Link>
+        <div className="m-head-actions">
+          <button className="m-btn m-btn-ghost" type="button" onClick={() => void reload()} disabled={loading}>
+            <IconRefresh />
+            Muat ulang
+          </button>
+          <Link className="m-btn m-btn-primary" to="/admin/products/new">
+            <IconPlus />
+            Tambah Produk
+          </Link>
+        </div>
       </div>
 
-      <div className="stats-grid">
-        <article className="stat-card">
-          <div className="stat-top"><span>Total produk</span><span className="stat-icon green">🗂</span></div>
-          <div className="stat-value">{total}</div>
-          <div className="stat-foot"><span className="stat-muted">terdaftar di katalog</span></div>
+      <div className="m-stats">
+        <article className="m-stat green">
+          <div className="m-stat-top">
+            <span className="m-stat-label">Total produk</span>
+            <span className="m-stat-icon"><IconBox /></span>
+          </div>
+          <div className="m-stat-value">{total}</div>
+          <div className="m-stat-foot">terdaftar di katalog</div>
         </article>
-        <article className="stat-card">
-          <div className="stat-top"><span>Tersertifikasi</span><span className="stat-icon blue">✓</span></div>
-          <div className="stat-value">{counts.certified}</div>
-          <div className="stat-foot"><span className="stat-muted">sudah punya sertifikat halal</span></div>
+
+        <article className="m-stat blue">
+          <div className="m-stat-top">
+            <span className="m-stat-label">Tersertifikasi</span>
+            <span className="m-stat-icon"><IconCheckCircle /></span>
+          </div>
+          <div className="m-stat-value">{counts.certified}</div>
+          <div className="m-stat-foot">sudah punya sertifikat halal</div>
         </article>
-        <article className="stat-card">
-          <div className="stat-top"><span>Dalam proses</span><span className="stat-icon orange">⏳</span></div>
-          <div className="stat-value">{counts.process}</div>
-          <div className="stat-foot"><span className="stat-muted">menunggu BPJPH</span></div>
+
+        <article className="m-stat amber">
+          <div className="m-stat-top">
+            <span className="m-stat-label">Dalam proses</span>
+            <span className="m-stat-icon"><IconClock /></span>
+          </div>
+          <div className="m-stat-value">{counts.process}</div>
+          <div className="m-stat-foot">menunggu BPJPH</div>
         </article>
-        <article className="stat-card">
-          <div className="stat-top"><span>Belum diajukan</span><span className="stat-icon purple">!</span></div>
-          <div className="stat-value">{counts.none}</div>
-          <div className="stat-foot"><span className="stat-muted">perlu pendampingan</span></div>
+
+        <article className="m-stat violet">
+          <div className="m-stat-top">
+            <span className="m-stat-label">Belum diajukan</span>
+            <span className="m-stat-icon"><IconAlert /></span>
+          </div>
+          <div className="m-stat-value">{counts.none}</div>
+          <div className="m-stat-foot">perlu pendampingan</div>
         </article>
       </div>
 
-      <div className="panel" style={{ padding: 0 }}>
-        <div className="history-toolbar">
+      <div className="m-card">
+        <div className="m-card-head">
           <div>
             <h2>Daftar produk</h2>
-            <p>{rows.length} produk ditampilkan</p>
-          </div>
-          <div className="history-filters">
-            <div className="filter-tabs" style={{ height: 36 }}>
-              {FILTERS.map((item) => (
-                <button
-                  key={item.label}
-                  className={`filter-tab${halal === item.value ? ' selected' : ''}`}
-                  onClick={() => setHalal(item.value)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <label className="search-box">
-              <svg viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5"/><path d="M15 15l-2.5-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              <input type="search" placeholder="Cari produk atau SKU..." value={query} onChange={(event) => setQuery(event.target.value)} />
-            </label>
+            <p>{rows.length} produk ditampilkan dari {total} terdaftar</p>
           </div>
         </div>
 
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead><tr><th>PRODUK</th><th>KATEGORI</th><th>HARGA</th><th>STATUS HALAL</th><th>STATUS</th><th></th></tr></thead>
+        <div className="m-toolbar">
+          <div className="m-segmented" role="tablist" aria-label="Filter status halal">
+            {FILTERS.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="tab"
+                aria-selected={halal === item.value}
+                className={halal === item.value ? 'is-active' : ''}
+                onClick={() => setHalal(item.value)}
+              >
+                {item.label}
+                <span className="m-count">
+                  {item.countKey === 'all'
+                    ? counts.certified + counts.process + counts.none
+                    : counts[item.countKey as 'certified' | 'process' | 'none']}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <label className="m-search">
+            <IconSearch />
+            <input
+              type="search"
+              placeholder="Cari produk atau SKU…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="m-table-wrap">
+          <table className="m-table">
+            <thead>
+              <tr>
+                <th>Produk</th>
+                <th>Kategori</th>
+                <th>Harga</th>
+                <th>Status halal</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Aksi</th>
+              </tr>
+            </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <div className="doc-name">
-                      <span className="avatar avatar-soft-green" style={{ width: 30, height: 30, borderRadius: 8 }}>🏪</span>
-                      <div>
+                    <div className="m-prod-cell">
+                      <span className="m-prod-thumb">
+                        {row.name.trim().charAt(0).toUpperCase() || '?'}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
                         <strong>{row.name}</strong>
                         <small>{row.sku ?? '—'}</small>
                       </div>
                     </div>
                   </td>
                   <td>{row.category}</td>
-                  <td>{row.price ?? '—'}</td>
-                  <td><span className={`badge-pill ${HALAL_TONE[row.halal]}`}><i></i>{HALAL_LABEL[row.halal]}</span></td>
-                  <td>{row.isActive ? 'Aktif' : 'Draf'}</td>
+                  <td><span className="m-price">{row.price ?? '—'}</span></td>
                   <td>
-                    <div className="row-actions">
-                      <button className="icon-action" aria-label="Edit" onClick={() => navigate(`/admin/products/${row.id}/edit`)}>✎</button>
-                      <button className="icon-action danger" aria-label="Hapus" onClick={() => void remove(row)}>🗑</button>
+                    <span className={`m-pill ${HALAL_PILL[row.halal]}`}>{HALAL_LABEL[row.halal]}</span>
+                  </td>
+                  <td>
+                    <span className={`m-pill ${row.isActive ? 'blue' : 'slate'}`}>
+                      {row.isActive ? 'Aktif' : 'Draf'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="m-row-actions">
+                      <button
+                        className="m-icon-btn"
+                        aria-label={`Edit ${row.name}`}
+                        title="Edit"
+                        onClick={() => navigate(`/admin/products/${row.id}/edit`)}
+                      >
+                        <IconEdit />
+                      </button>
+                      <button
+                        className="m-icon-btn danger"
+                        aria-label={`Hapus ${row.name}`}
+                        title="Hapus"
+                        onClick={() => void remove(row)}
+                      >
+                        <IconTrash />
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {loading ? <p className="knowledge-note" style={{ padding: '0 18px' }}>Memuat produk…</p> : null}
-          {error ? (
-            <div style={{ padding: '0 18px', color: '#b91c1c' }} className="knowledge-note">
-              {error}{' '}
-              <button className="btn btn-secondary btn-sm" style={{ marginLeft: 8 }} onClick={() => void reload()}>
-                Coba lagi
-              </button>
-            </div>
-          ) : null}
-          {!loading && !error && rows.length === 0 ? <div className="empty-state">Belum ada produk.</div> : null}
         </div>
 
-        <div className="table-footer">
+        {error ? (
+          <div className="m-alert">
+            <IconAlert />
+            <span>{error}</span>
+            <button className="m-btn m-btn-ghost m-btn-sm" style={{ marginLeft: 'auto' }} onClick={() => void reload()}>
+              Coba lagi
+            </button>
+          </div>
+        ) : null}
+
+        {!loading && !error && rows.length === 0 ? (
+          <div className="m-empty">
+            <span className="m-empty-icon"><IconBox /></span>
+            <strong>{query || halal ? 'Tidak ada produk yang cocok' : 'Belum ada produk'}</strong>
+            <p>
+              {query || halal
+                ? 'Coba ubah kata kunci atau filter status halal.'
+                : 'Tambahkan produk UMKM agar asisten bisa menjawab dengan konteks yang tepat.'}
+            </p>
+            {!query && !halal ? (
+              <Link className="m-btn m-btn-primary m-btn-sm" to="/admin/products/new">
+                <IconPlus />
+                Tambah Produk
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="m-empty">
+            <span className="m-empty-icon"><IconRefresh /></span>
+            <strong>Memuat produk…</strong>
+          </div>
+        ) : null}
+
+        <div className="m-table-foot">
           <span>Menampilkan <strong>{rows.length}</strong> dari <strong>{total}</strong> produk</span>
-          <button className="btn btn-secondary btn-sm" onClick={() => void reload()}>Muat ulang</button>
+          <span>{counts.certified} tersertifikasi · {counts.process} proses · {counts.none} belum</span>
         </div>
       </div>
     </section>

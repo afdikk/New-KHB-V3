@@ -86,11 +86,14 @@ export default function ChatPage() {
     }
   };
 
-  const starters = boot?.starters ?? [
-    'Bagaimana cara mengajukan sertifikasi halal untuk UMKM?',
-    'Apa itu self declare?',
-    'Dokumen apa saja yang perlu disiapkan?',
-  ];
+  const starters = boot?.starters?.length
+    ? boot.starters
+    : [
+        'Bagaimana cara mendaftar sertifikasi halal?',
+        'Apakah self declare gratis untuk UMKM?',
+        'Dokumen apa yang harus saya siapkan?',
+        'Bagaimana cara menghubungi admin KHB?',
+      ];
 
   return (
     <section className="view active" id="view-chat">
@@ -106,16 +109,27 @@ export default function ChatPage() {
       <div className="chat-layout">
         <aside className="chat-topics panel" id="chat-topics">
           <div className="chat-topics-head">
-            <h3>Topik populer</h3>
+            <div>
+              <h3>Pertanyaan populer</h3>
+              <p>Klik untuk langsung mengirim</p>
+            </div>
+            <span className="topics-count">{starters.length}</span>
           </div>
-          <p>Pilih topik untuk memulai percakapan</p>
-          {starters.map((starter) => (
-            <button key={starter} className="topic-btn" onClick={() => void send(starter)}>
-              <span className="topic-icon topic-green">{BOT_AVATAR}</span>
-              <span><strong>{starter}</strong><small>Kirim sebagai pertanyaan</small></span>
-              <b>→</b>
-            </button>
-          ))}
+
+          <div className="topic-grid">
+            {starters.map((starter, index) => (
+              <button key={starter} className="topic-card" onClick={() => void send(starter)}>
+                <span className="topic-num">{String(index + 1).padStart(2, '0')}</span>
+                <span className="topic-text">{starter}</span>
+                <span className="topic-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" fill="none">
+                    <path d="M4 10h11M11 6l4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="chat-disclaimer">
             ⓘ Jawaban AI bersifat edukatif. Untuk informasi resmi, rujuk BPJPH/SIHALAL.
           </div>

@@ -31,6 +31,14 @@ type Screen = 'chat' | 'history';
 const GREETING_FALLBACK =
   "Assalamu'alaikum! Saya Asisten Halal KHB. Silakan tanya seputar sertifikasi halal, self declare, atau dokumen UMKM.";
 
+/** Dipakai bila backend belum siap, agar pengunjung tetap punya titik mulai. */
+const STARTERS_FALLBACK = [
+  'Bagaimana cara mendaftar sertifikasi halal?',
+  'Apakah self declare gratis untuk UMKM?',
+  'Dokumen apa yang harus saya siapkan?',
+  'Bagaimana cara menghubungi admin KHB?',
+];
+
 const isValidContact = (value: string): boolean => {
   const clean = value.replace(/[\s-]/g, '');
   return /^(?:[^@\s]+@[^@\s]+\.[^@\s]{2,}|\+?62[0-9]{7,14}|0[0-9]{7,14})$/.test(clean);
@@ -441,13 +449,17 @@ export function PublicChat({
           <div ref={bottom} />
         </div>
 
-        {messages.length <= 2 && boot?.starters?.length ? (
+        {messages.length <= 2 ? (
           <div className="pc-starters">
-            {boot.starters.map((starter) => (
-              <button type="button" key={starter} onClick={() => void send(undefined, starter)}>
-                {starter}
-              </button>
-            ))}
+            <span className="pc-starters-label">Pertanyaan yang sering ditanyakan</span>
+            <div className="pc-starters-grid">
+              {(boot?.starters?.length ? boot.starters : STARTERS_FALLBACK).map((starter, index) => (
+                <button type="button" key={starter} onClick={() => void send(undefined, starter)}>
+                  <span className="pc-starter-num">{index + 1}</span>
+                  <span className="pc-starter-text">{starter}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 

@@ -80,7 +80,6 @@
 }
 .qr-chip:hover { background: #f0fdf4; border-color: #16A34A; color: #16A34A; transform: translateY(-1px); }
 .qr-chip:active { transform: scale(.96); }
-.widget-prompts { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; scrollbar-width: none; }
-.widget-prompts::-webkit-scrollbar { display: none; }
+.widget-prompts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px 12px; }
 .embed-check{list-style:none;display:grid;gap:9px;font-size:13px;color:var(--ink-2)}
 .embed-check code{background:var(--green-subtle);padding:1px 6px;border-radius:6px;font-size:12px}

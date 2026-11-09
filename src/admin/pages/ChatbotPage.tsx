@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { api, type ChatbotSettings } from '../services/api';
 import { useResource } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
+import { SelectField, SettingRow, Slider, Switch, TextField } from '../components/ui/Fields';
+import {
+  IconAlert,
+  IconChat,
+  IconCheckCircle,
+  IconDocument,
+  IconRefresh,
+  IconSend,
+  IconSettings,
+  IconShield,
+  IconSparkles,
+} from '../components/ui/Icons';
 
 const TONES = ['Ramah & ringkas', 'Formal & rinci', 'Sangat ringkas (poin)'];
 const LANGUAGES = ['Bahasa Indonesia', 'Bahasa Indonesia + istilah Arab', 'Bahasa Sunda (percakapan)'];
@@ -47,7 +59,12 @@ export default function ChatbotPage() {
   if (loading && !form) {
     return (
       <section className="view active" id="view-chatbot">
-        <div className="panel" style={{ padding: 32 }}><p className="knowledge-note">Memuat pengaturan asisten…</p></div>
+        <div className="m-card">
+          <div className="m-empty">
+            <span className="m-empty-icon"><IconRefresh /></span>
+            <strong>Memuat pengaturan asisten…</strong>
+          </div>
+        </div>
       </section>
     );
   }
@@ -55,9 +72,13 @@ export default function ChatbotPage() {
   if ((error && !form) || !form) {
     return (
       <section className="view active" id="view-chatbot">
-        <div className="panel" style={{ padding: 32 }}>
-          <p className="knowledge-note">{error ?? 'Pengaturan tidak tersedia.'}</p>
-          <button className="btn btn-primary" onClick={() => void reload()}>Coba lagi</button>
+        <div className="m-card">
+          <div className="m-empty">
+            <span className="m-empty-icon"><IconAlert /></span>
+            <strong>Pengaturan tidak tersedia</strong>
+            <p>{error ?? 'Coba muat ulang halaman ini.'}</p>
+            <button className="m-btn m-btn-primary m-btn-sm" onClick={() => void reload()}>Coba lagi</button>
+          </div>
         </div>
       </section>
     );
@@ -66,200 +87,262 @@ export default function ChatbotPage() {
   const set = <K extends keyof ChatbotSettings>(key: K, value: ChatbotSettings[K]) =>
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
+  const dirty = data ? JSON.stringify(form) !== JSON.stringify(data) : false;
+
   return (
     <section className="view active" id="view-chatbot">
-      <div className="page-title-row">
-        <div>
-          <div className="eyebrow"><span className="eyebrow-dot"></span> PENGATURAN ASISTEN</div>
+      <div className="m-head">
+        <div className="m-head-copy">
+          <span className="m-eyebrow">Pengaturan Asisten</span>
           <h1>Chatbot AI</h1>
-          <p className="subheading">Atur identitas, gaya jawaban, dan kebijakan jawaban asisten halal.</p>
+          <p className="m-sub">Atur identitas, gaya jawaban, dan kebijakan jawaban asisten halal.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => void save()} disabled={saving}>
-          {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
-        </button>
+        <div className="m-head-actions">
+          {dirty ? <span className="m-pill amber">Ada perubahan belum disimpan</span> : null}
+          <button className="m-btn m-btn-primary" onClick={() => void save()} disabled={saving || !dirty}>
+            {saving ? <span className="a2-spinner" /> : <IconCheckCircle />}
+            {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid-2-1">
-        <div className="panel" style={{ padding: 22 }}>
-          <div className="panel-heading">
-            <div>
-              <h2>Identitas &amp; gaya jawaban</h2>
-              <p>Dipakai pada semua kanal percakapan</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
+        {/* ── Kolom kiri: formulir ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="m-card">
+            <div className="m-card-head">
+              <div>
+                <h2>Identitas &amp; gaya jawaban</h2>
+                <p>Dipakai pada semua kanal percakapan</p>
+              </div>
+            </div>
+
+            <div className="m-card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <TextField
+                id="assistant-name"
+                label="Nama asisten"
+                value={form.assistantName}
+                onChange={(value) => set('assistantName', value)}
+                placeholder="Asisten Halal KHB"
+                maxLength={60}
+                hint="Muncul sebagai pengirim pesan di semua kanal."
+              />
+
+              <TextField
+                id="assistant-greeting"
+                label="Sapaan pembuka"
+                value={form.greeting}
+                onChange={(value) => set('greeting', value)}
+                multiline
+                rows={4}
+                maxLength={400}
+                hint="Tampil sebagai pesan pertama saat percakapan dimulai."
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+                <SelectField
+                  id="assistant-language"
+                  label="Bahasa"
+                  value={form.language}
+                  options={LANGUAGES}
+                  onChange={(value) => set('language', value)}
+                />
+                <SelectField
+                  id="assistant-tone"
+                  label="Gaya jawaban"
+                  value={form.tone}
+                  options={TONES}
+                  onChange={(value) => set('tone', value)}
+                />
+              </div>
+
+              <SelectField
+                id="assistant-fallback"
+                label="Jika jawaban tidak ditemukan"
+                value={form.fallbackMode}
+                options={FALLBACKS}
+                onChange={(value) => set('fallbackMode', value)}
+                hint="Perilaku asisten saat dokumen KHB tidak memuat jawabannya."
+              />
             </div>
           </div>
 
-          <div className="settings-field">
-            <label htmlFor="assistant-name">Nama asisten</label>
-            <input id="assistant-name" className="settings-input" value={form.assistantName} onChange={(e) => set('assistantName', e.target.value)} />
-          </div>
-
-          <div className="settings-field">
-            <label htmlFor="assistant-greeting">Sapaan pembuka</label>
-            <textarea id="assistant-greeting" className="settings-textarea" rows={3} value={form.greeting} onChange={(e) => set('greeting', e.target.value)} />
-            <small className="knowledge-note">Tampil sebagai pesan pertama saat percakapan dimulai.</small>
-          </div>
-
-          <div className="form-row-two">
-            <div className="settings-field">
-              <label htmlFor="assistant-language">Bahasa</label>
-              <select id="assistant-language" className="settings-select" value={form.language} onChange={(e) => set('language', e.target.value)}>
-                {LANGUAGES.map((item) => <option key={item}>{item}</option>)}
-              </select>
+          <div className="m-card">
+            <div className="m-card-head">
+              <div>
+                <h2>Perilaku percakapan</h2>
+                <p>Bagaimana asisten menangani sumber, eskalasi, dan kontak</p>
+              </div>
             </div>
-            <div className="settings-field">
-              <label htmlFor="assistant-tone">Gaya jawaban</label>
-              <select id="assistant-tone" className="settings-select" value={form.tone} onChange={(e) => set('tone', e.target.value)}>
-                {TONES.map((item) => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-          </div>
 
-          <div className="settings-field">
-            <label htmlFor="assistant-fallback">Jika jawaban tidak ditemukan</label>
-            <select id="assistant-fallback" className="settings-select" value={form.fallbackMode} onChange={(e) => set('fallbackMode', e.target.value)}>
-              {FALLBACKS.map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </div>
+            <div className="m-card-pad" style={{ paddingTop: 4, paddingBottom: 8 }}>
+              <SettingRow
+                icon={<IconDocument />}
+                title="Selalu tampilkan sumber dokumen"
+                desc="Setiap jawaban menyertakan nama dokumen rujukan."
+              >
+                <Switch
+                  checked={form.showSources}
+                  onChange={(value) => set('showSources', value)}
+                  label="Selalu tampilkan sumber dokumen"
+                />
+              </SettingRow>
 
-          <div className="settings-toggle-item">
-            <div>
-              <strong>Selalu tampilkan sumber dokumen</strong>
-              <small>Setiap jawaban menyertakan nama dokumen rujukan.</small>
-            </div>
-            <label className="toggle">
-              <input type="checkbox" checked={form.showSources} onChange={(e) => set('showSources', e.target.checked)} />
-              <span className="toggle-track"></span>
-            </label>
-          </div>
+              <SettingRow
+                icon={<IconSend />}
+                title="Eskalasi otomatis"
+                desc="Percakapan yang tidak terjawab ditandai butuh pendamping."
+              >
+                <Switch
+                  checked={form.autoEscalate}
+                  onChange={(value) => set('autoEscalate', value)}
+                  label="Eskalasi otomatis"
+                />
+              </SettingRow>
 
-          <div className="settings-toggle-item">
-            <div>
-              <strong>Eskalasi otomatis</strong>
-              <small>Percakapan yang tidak terjawab ditandai butuh pendamping.</small>
-            </div>
-            <label className="toggle">
-              <input type="checkbox" checked={form.autoEscalate} onChange={(e) => set('autoEscalate', e.target.checked)} />
-              <span className="toggle-track"></span>
-            </label>
-          </div>
-
-          <div className="settings-toggle-item">
-            <div>
-              <strong>Minta kontak sebelum jawaban panjang</strong>
-              <small>Berguna untuk menindaklanjuti kasus yang butuh pendampingan.</small>
-            </div>
-            <label className="toggle">
-              <input type="checkbox" checked={form.requestContact} onChange={(e) => set('requestContact', e.target.checked)} />
-              <span className="toggle-track"></span>
-            </label>
-          </div>
-
-          <div className="panel-heading" style={{ marginTop: 22 }}>
-            <div>
-              <h2>Kebijakan jawaban AI</h2>
-              <p>Menentukan apakah asisten boleh menjawab di luar dokumen KHB</p>
+              <SettingRow
+                icon={<IconChat />}
+                title="Minta kontak sebelum jawaban panjang"
+                desc="Berguna untuk menindaklanjuti kasus yang butuh pendampingan."
+              >
+                <Switch
+                  checked={form.requestContact}
+                  onChange={(value) => set('requestContact', value)}
+                  label="Minta kontak sebelum jawaban panjang"
+                />
+              </SettingRow>
             </div>
           </div>
 
-          <div className="settings-toggle-item">
-            <div>
-              <strong>Jawab pertanyaan umum (di luar RAG)</strong>
-              <small>
-                Jika dokumen KHB tidak memuat jawabannya, asisten menjawab dari pengetahuan umum model.
-                Jawaban diberi tanda “pengetahuan umum”.
-              </small>
+          <div className="m-card">
+            <div className="m-card-head">
+              <div>
+                <h2>Kebijakan jawaban AI</h2>
+                <p>Menentukan apakah asisten boleh menjawab di luar dokumen KHB</p>
+              </div>
             </div>
-            <label className="toggle">
-              <input type="checkbox" checked={form.allowGeneralKnowledge} onChange={(e) => set('allowGeneralKnowledge', e.target.checked)} />
-              <span className="toggle-track"></span>
-            </label>
-          </div>
 
-          <div className="settings-toggle-item">
-            <div>
-              <strong>Tampilkan catatan “bukan dokumen KHB”</strong>
-              <small>Menambahkan penutup pada jawaban umum agar tidak disalahartikan sebagai dokumen resmi.</small>
+            <div className="m-card-pad" style={{ paddingTop: 4, paddingBottom: 8 }}>
+              <SettingRow
+                icon={<IconSparkles />}
+                title="Jawab pertanyaan umum (di luar RAG)"
+                desc="Jika dokumen KHB tidak memuat jawabannya, asisten menjawab dari pengetahuan umum model. Jawaban diberi tanda “pengetahuan umum”."
+              >
+                <Switch
+                  checked={form.allowGeneralKnowledge}
+                  onChange={(value) => set('allowGeneralKnowledge', value)}
+                  label="Jawab pertanyaan umum di luar RAG"
+                />
+              </SettingRow>
+
+              <SettingRow
+                icon={<IconShield />}
+                title="Tampilkan catatan “bukan dokumen KHB”"
+                desc="Menambahkan penutup pada jawaban umum agar tidak disalahartikan sebagai dokumen resmi."
+              >
+                <Switch
+                  checked={form.generalDisclaimer}
+                  onChange={(value) => set('generalDisclaimer', value)}
+                  label="Tampilkan catatan bukan dokumen KHB"
+                />
+              </SettingRow>
             </div>
-            <label className="toggle">
-              <input type="checkbox" checked={form.generalDisclaimer} onChange={(e) => set('generalDisclaimer', e.target.checked)} />
-              <span className="toggle-track"></span>
-            </label>
+
+            <div className="m-card-pad" style={{ paddingTop: 0 }}>
+              <Slider
+                id="assistant-temperature"
+                value={form.temperature}
+                onChange={(value) => set('temperature', value)}
+                hint="0 = faktual dan ketat, 1 = lebih bebas. Jawaban dari dokumen selalu memakai 0,4."
+              />
+            </div>
           </div>
 
-          <div className="settings-field" style={{ marginTop: 14 }}>
-            <label htmlFor="assistant-temperature">Kreativitas jawaban umum ({form.temperature.toFixed(1)})</label>
-            <input
-              id="assistant-temperature"
-              type="range"
-              min={0}
-              max={1}
-              step={0.1}
-              value={form.temperature}
-              onChange={(e) => set('temperature', Number(e.target.value))}
-              style={{ width: '100%' }}
-            />
-            <small className="knowledge-note">0 = faktual dan ketat, 1 = lebih bebas. Jawaban dokumen selalu memakai 0,4.</small>
-          </div>
-
-          <div className="settings-actions">
-            <button className="btn btn-secondary" type="button" onClick={() => setForm(data ?? form)}>Batal</button>
-            <button className="btn btn-primary" type="button" onClick={() => void save()} disabled={saving}>
+          <div style={{ display: 'flex', gap: 9, justifyContent: 'flex-end' }}>
+            <button className="m-btn m-btn-ghost" type="button" onClick={() => setForm(data ?? form)} disabled={!dirty || saving}>
+              Batalkan perubahan
+            </button>
+            <button className="m-btn m-btn-primary" type="button" onClick={() => void save()} disabled={saving || !dirty}>
               {saving ? 'Menyimpan…' : 'Simpan'}
             </button>
           </div>
         </div>
 
-        <div className="stack">
-          <div className="panel" style={{ padding: 22 }}>
-            <div className="panel-heading">
+        {/* ── Kolom kanan: pratinjau & status ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="m-card">
+            <div className="m-card-head">
               <div>
                 <h2>Pratinjau pesan</h2>
-                <p>{form.assistantName}</p>
+                <p>Tampilan sapaan di kanal percakapan</p>
               </div>
             </div>
-            <div className="public-msg bot" style={{ maxWidth: '100%' }}>{form.greeting}</div>
-            <div className="kv" style={{ marginTop: 16 }}>
-              <div className="kv-row"><span>Bahasa</span><strong>{form.language}</strong></div>
-              <div className="kv-row"><span>Gaya jawaban</span><strong>{form.tone}</strong></div>
-              <div className="kv-row"><span>Jika tidak ditemukan</span><strong>{form.fallbackMode}</strong></div>
-              <div className="kv-row"><span>Tampilkan sumber</span><strong>{form.showSources ? 'Ya' : 'Tidak'}</strong></div>
-              <div className="kv-row"><span>Jawaban umum</span><strong>{form.allowGeneralKnowledge ? 'Aktif' : 'Mati'}</strong></div>
+            <div className="m-card-pad">
+              <div className="m-preview-chat">
+                <div className="m-preview-row">
+                  <span className="m-preview-ava">
+                    {(form.assistantName.trim().charAt(0) || 'K').toUpperCase()}
+                  </span>
+                  <div className="m-preview-bubble">{form.greeting}</div>
+                </div>
+                <span className="m-preview-meta">{form.assistantName}</span>
+              </div>
+
+              <div className="m-kv" style={{ marginTop: 16 }}>
+                <div className="m-kv-row"><span>Bahasa</span><strong>{form.language}</strong></div>
+                <div className="m-kv-row"><span>Gaya jawaban</span><strong>{form.tone}</strong></div>
+                <div className="m-kv-row"><span>Jika tidak ditemukan</span><strong>{form.fallbackMode}</strong></div>
+                <div className="m-kv-row"><span>Tampilkan sumber</span><strong>{form.showSources ? 'Ya' : 'Tidak'}</strong></div>
+                <div className="m-kv-row"><span>Jawaban umum</span><strong>{form.allowGeneralKnowledge ? 'Aktif' : 'Mati'}</strong></div>
+              </div>
             </div>
           </div>
 
-          <div className="panel" style={{ padding: 22 }}>
-            <div className="panel-heading">
+          <div className="m-card">
+            <div className="m-card-head">
               <div>
                 <h2>Status sistem</h2>
                 <p>Dari konfigurasi server</p>
               </div>
             </div>
-            <div className="kv">
-              <div className="kv-row">
-                <span>LLM (pengetahuan umum)</span>
-                <strong>{form.capabilities.llmConfigured ? form.model ?? 'aktif' : 'belum diatur'}</strong>
+            <div className="m-card-pad" style={{ paddingTop: 4 }}>
+              <div className="m-kv">
+                <div className="m-kv-row">
+                  <span><IconSparkles /> LLM (pengetahuan umum)</span>
+                  <strong>{form.capabilities.llmConfigured ? form.model ?? 'aktif' : 'belum diatur'}</strong>
+                </div>
+                <div className="m-kv-row">
+                  <span><IconDocument /> Layanan RAG</span>
+                  <strong>{form.capabilities.ragChatConfigured ? 'rag.aiones.app' : 'retrieval lokal'}</strong>
+                </div>
+                <div className="m-kv-row">
+                  <span><IconSettings /> Knowledge base</span>
+                  <strong style={{ fontSize: 11.5 }}>{form.capabilities.knowledgeBaseId ?? '—'}</strong>
+                </div>
+                <div className="m-kv-row">
+                  <span><IconSettings /> Unggah dokumen</span>
+                  <strong>
+                    {form.capabilities.ragBackend === 'kms'
+                      ? 'KMS'
+                      : form.capabilities.ragBackend === 'rag-chat'
+                        ? 'Layanan RAG'
+                        : '—'}
+                  </strong>
+                </div>
+                <div className="m-kv-row">
+                  <span><IconCheckCircle /> Bisa jawab umum</span>
+                  <strong>
+                    <span className={`m-pill ${form.capabilities.canAnswerGeneral ? 'green' : 'slate'}`}>
+                      {form.capabilities.canAnswerGeneral ? 'Ya' : 'Tidak'}
+                    </span>
+                  </strong>
+                </div>
               </div>
-              <div className="kv-row">
-                <span>Layanan RAG</span>
-                <strong>{form.capabilities.ragChatConfigured ? 'rag.aiones.app' : 'retrieval lokal'}</strong>
-              </div>
-              <div className="kv-row">
-                <span>Knowledge base</span>
-                <strong>{form.capabilities.knowledgeBaseId ?? '—'}</strong>
-              </div>
-              <div className="kv-row">
-                <span>Unggah dokumen</span>
-                <strong>{form.capabilities.ragBackend === 'kms' ? 'KMS' : form.capabilities.ragBackend === 'rag-chat' ? 'Layanan RAG' : '—'}</strong>
-              </div>
-              <div className="kv-row">
-                <span>Bisa jawab umum</span>
-                <strong>{form.capabilities.canAnswerGeneral ? 'Ya' : 'Tidak'}</strong>
-              </div>
+              <p className="m-field-hint" style={{ marginTop: 12 }}>
+                Pengaturan disimpan di tabel <code>chatbot_settings</code> dan langsung dipakai pada permintaan
+                berikutnya di endpoint <code>/api/v1/chat</code>.
+              </p>
             </div>
-            <p className="knowledge-note">
-              Pengaturan disimpan di tabel <code>chatbot_settings</code>. Perubahan langsung dipakai pada permintaan
-              berikutnya di endpoint <code>/api/v1/chat</code>.
-            </p>
           </div>
         </div>
       </div>

@@ -13,9 +13,10 @@ import './styles/auth.css';
 import './styles/extras.css';
 import './styles/embed.css';
 import './styles/chat-layout.css';
+import './styles/legal.css';
+import './styles/modern.css';
 
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import ForgotPage from './pages/ForgotPage';
 import ResetPage from './pages/ResetPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
@@ -48,21 +49,24 @@ import IntegrasiPage from './pages/IntegrasiPage';
 import AppLayout from './components/AppLayout';
 import { ToastProvider } from './components/Toast';
 import { AuthProvider, RequireAuth } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
 
 export default function AdminApp() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-      <Routes>
+    <AppProvider>
+      <AuthProvider>
+        <ToastProvider>
+        <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
       {/* Halaman publik milik chatbot (dipakai untuk embed di landing) */}
       <Route path="/admin/login" element={<LoginPage />} />
-      <Route path="/admin/register" element={<RegisterPage />} />
       <Route path="/admin/forgot" element={<ForgotPage />} />
       <Route path="/admin/forgot-password" element={<ForgotPage />} />
       <Route path="/admin/reset" element={<ResetPage />} />
+      {/* Registrasi mandiri dihapus — aplikasi dipakai satu pengelola. */}
+      <Route path="/admin/register" element={<Navigate to="/admin/login" replace />} />
       <Route path="/admin/change-password" element={<ChangePasswordPage />} />
       <Route path="/admin/widget" element={<WidgetPage />} />
       <Route path="/admin/syarat" element={<SyaratPage />} />
@@ -102,7 +106,8 @@ export default function AdminApp() {
 
       <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </ToastProvider>
-    </AuthProvider>
+        </ToastProvider>
+        </AuthProvider>
+      </AppProvider>
   );
 }
