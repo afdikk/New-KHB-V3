@@ -11,8 +11,11 @@ import { z } from 'zod';
  * dimuat dari `server/.env`, lalu root repo `.env` sebagai pelengkap.
  */
 loadEnvFile();
-const rootEnvPath = resolve(__dirname, '../../.env');
-if (existsSync(rootEnvPath)) loadEnvFile({ path: rootEnvPath });
+// Server membaca `server/.env` (dev) lalu `.env` di akar repo (deploy panel
+// menulis konfigurasi situs di sana).
+for (const candidate of [resolve(__dirname, '../../.env'), resolve(__dirname, '../../../.env')]) {
+  if (existsSync(candidate)) loadEnvFile({ path: candidate });
+}
 
 const envSchema = z.object({
   APP_NAME: z.string().default('khb-halal-assistant'),

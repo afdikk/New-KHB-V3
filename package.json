@@ -14,7 +14,9 @@
     "api:install": "npm --prefix server install",
     "api:db:push": "npm --prefix server run db:push",
     "api:db:seed": "npm --prefix server run db:seed",
-    "test:api": "node scripts/smoke.mjs"
+    "test:api": "node scripts/smoke.mjs",
+    "start": "node server/dist/server.js",
+    "build:full": "npm run build && npm --prefix server run build && npm --prefix server run prisma:generate"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

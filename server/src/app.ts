@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -88,6 +90,16 @@ export function createApp(): express.Express {
   app.use('/api/v1/notifications', requireAuth, notificationsRouter);
   app.use('/api/v1/flows', requireAuth, flowsRouter);
   app.use('/api/v1/settings', requireAuth, settingsRouter);
+
+  // Hasil build frontend (Vite) dilayani proses yang sama bila tersedia —
+  // berguna ketika seluruh trafik domain diproksikan ke Node (deploy panel).
+  const webRoot = resolve(__dirname, '../../dist');
+  if (existsSync(join(webRoot, 'index.html'))) {
+    app.use(express.static(webRoot, { index: false, maxAge: '1h' }));
+    app.get(/^\/(?!api\/|health$).*/, (_req, res) => {
+      res.sendFile(join(webRoot, 'index.html'));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

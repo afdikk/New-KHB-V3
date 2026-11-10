@@ -10,7 +10,7 @@
  * diberi prefiks, dan Ctrl+C mematikan keduanya (termasuk di Windows).
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,8 +25,26 @@ const readFlag = (name) => {
   return index >= 0 ? args[index + 1] : undefined;
 };
 
+/**
+ * Muat `.env` di akar repo ke process.env (tanpa menimpa env yang sudah ada).
+ * Deploy di panel hosting menulis konfigurasi situs di file itu; nilainya harus
+ * diwariskan ke proses anak karena `dotenv` di server tidak selalu menemukannya.
+ */
+const envFile = path.join(root, '.env');
+if (existsSync(envFile)) {
+  for (const line of readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+    const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!match) continue;
+    const value = match[2].trim().replace(/^['"]|['"]$/g, '');
+    if (process.env[match[1]] === undefined) process.env[match[1]] = value;
+  }
+}
+
+/** Mode produksi (panel hosting): hanya API, port dari env PORT milik panel. */
+const production = process.env.NODE_ENV === 'production' || args.includes('--production');
+
 const webPort = Number(readFlag('--port') ?? 3000);
-const apiPort = Number(readFlag('--api-port') ?? 4000);
+const apiPort = Number(readFlag('--api-port') ?? process.env.PORT ?? process.env.API_PORT ?? 4000);
 
 const colors = { web: '\x1b[36m', api: '\x1b[32m', sys: '\x1b[35m', dim: '\x1b[2m', reset: '\x1b[0m' };
 const log = (tag, message) => {
@@ -149,6 +167,20 @@ async function waitForApi(port) {
 }
 
 const main = async () => {
+  if (production) {
+    // Panel hosting menjalankan `npm run dev` tetapi mengharapkan proses tunggal
+    // yang listen di PORT. Jalankan build hasil kompilasi, bukan Vite + tsx watch.
+    log('sys', `mode produksi — API di port ${apiPort}, frontend dari dist/`);
+    const api = run('node', ['server/dist/server.js'], {
+      cwd: root,
+      tag: 'api',
+      extraEnv: { PORT: String(apiPort), NODE_ENV: 'production' },
+    });
+    process.on('SIGINT', () => { killTree(api); setTimeout(() => process.exit(0), 300); });
+    process.on('SIGTERM', () => { killTree(api); setTimeout(() => process.exit(0), 300); });
+    api.on('exit', (code) => process.exit(code ?? 1));
+    return;
+  }
   await ensureServerDeps();
 
   if (!existsSync(path.join(serverDir, '.env'))) {

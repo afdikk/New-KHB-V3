@@ -1,0 +1,188 @@
+{
+  "env_path": ".env",
+  "source": ".env",
+  "variables": [
+    {
+      "key": "NODE_ENV",
+      "has_value": true
+    },
+    {
+      "key": "DATABASE_URL",
+      "has_value": true
+    },
+    {
+      "key": "PUBLIC_BASE_URL",
+      "has_value": true
+    },
+    {
+      "key": "CORS_ORIGINS",
+      "has_value": true
+    },
+    {
+      "key": "SESSION_SECRET",
+      "has_value": true
+    },
+    {
+      "key": "SESSION_TTL_HOURS",
+      "has_value": true
+    },
+    {
+      "key": "ADMIN_EMAIL",
+      "has_value": true
+    },
+    {
+      "key": "ADMIN_NAME",
+      "has_value": true
+    },
+    {
+      "key": "ADMIN_PASSWORD",
+      "has_value": true
+    },
+    {
+      "key": "LOG_LEVEL",
+      "has_value": true
+    },
+    {
+      "key": "APP_NAME",
+      "has_value": true
+    },
+    {
+      "key": "RAG_CHAT_API_URL",
+      "has_value": true
+    },
+    {
+      "key": "RAG_CHAT_API_KEY",
+      "has_value": true
+    },
+    {
+      "key": "RAG_CHAT_KNOWLEDGE_BASE_ID",
+      "has_value": true
+    },
+    {
+      "key": "RAG_API_URL",
+      "has_value": true
+    },
+    {
+      "key": "RAG_API_KEY",
+      "has_value": true
+    },
+    {
+      "key": "KMS_ORGANIZATION_ID",
+      "has_value": true
+    },
+    {
+      "key": "KMS_DOCUMENT_CATEGORY",
+      "has_value": true
+    },
+    {
+      "key": "KMS_OWNER_EMAIL",
+      "has_value": true
+    },
+    {
+      "key": "KMS_OWNER_NAME",
+      "has_value": true
+    },
+    {
+      "key": "LLM_API_URL",
+      "has_value": true
+    },
+    {
+      "key": "LLM_API_KEY",
+      "has_value": true
+    },
+    {
+      "key": "LLM_MODEL",
+      "has_value": true
+    },
+    {
+      "key": "LLM_TIMEOUT_MS",
+      "has_value": true
+    },
+    {
+      "key": "LLM_TEMPERATURE",
+      "has_value": true
+    },
+    {
+      "key": "HOST",
+      "has_value": true
+    },
+    {
+      "key": "PORT",
+      "has_value": true
+    },
+    {
+      "key": "API_PORT",
+      "has_value": true
+    },
+    {
+      "key": "APP_PORT",
+      "has_value": true
+    },
+    {
+      "key": "SERVER_PORT",
+      "has_value": true
+    },
+    {
+      "key": "NODE_PORT",
+      "has_value": true
+    },
+    {
+      "key": "DB_CONNECTION",
+      "has_value": true
+    },
+    {
+      "key": "DB_HOST",
+      "has_value": true
+    },
+    {
+      "key": "DB_PORT",
+      "has_value": true
+    },
+    {
+      "key": "DB_USER",
+      "has_value": true
+    },
+    {
+      "key": "DB_USERNAME",
+      "has_value": true
+    },
+    {
+      "key": "DB_PASSWORD",
+      "has_value": true
+    },
+    {
+      "key": "MYSQL_HOST",
+      "has_value": true
+    },
+    {
+      "key": "MYSQL_PORT",
+      "has_value": true
+    },
+    {
+      "key": "MYSQL_USER",
+      "has_value": true
+    },
+    {
+      "key": "MYSQL_PASSWORD",
+      "has_value": true
+    },
+    {
+      "key": "STORAGE_ROOT",
+      "has_value": true
+    },
+    {
+      "key": "PAYMENT_PROOF_PATH",
+      "has_value": true
+    },
+    {
+      "key": "APP_URL",
+      "has_value": true
+    }
+  ],
+  "set_by_panel_on_deploy": [
+    "PORT",
+    "NODE_ENV",
+    "HOST"
+  ],
+  "note": "Values are not returned over MCP. Set them with kroombox_update_env_variables."
+}
