@@ -6,10 +6,13 @@ import { isLlmEnabled } from '../ai/llm.client';
 import { getWorkspace } from '../../common/workspace';
 import { getAnswerDocuments } from '../knowledge/knowledge.service';
 import { touchCustomer } from '../customers/customers.service';
+import { resolveWidgetTheme, type WidgetTheme } from './widget-themes';
 
 export interface ChatBootPayload {
   workspace: { name: string; slug: string; city: string | null; tagline: string | null };
   assistant: { name: string; greeting: string; language: string; showSources: boolean };
+  /** Tema tampilan widget (warna + animasi Lottie) yang dipilih admin. */
+  theme: WidgetTheme;
   starters: string[];
   capabilities: { rag: boolean; general: boolean };
 }
@@ -44,6 +47,7 @@ export async function chatBoot(slug: string): Promise<ChatBootPayload> {
       language: workspace.settings.language,
       showSources: workspace.settings.showSources,
     },
+    theme: resolveWidgetTheme(workspace.settings.widgetTheme),
     starters,
     capabilities: { rag: documentCount > 0, general: isLlmEnabled() },
   };

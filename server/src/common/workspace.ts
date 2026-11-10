@@ -23,6 +23,7 @@ export interface WorkspaceWithSettings {
     requestContact: boolean;
     allowGeneralKnowledge: boolean;
     generalDisclaimer: boolean;
+    widgetTheme: string;
     model: string | null;
     temperature: number;
   };
@@ -61,6 +62,7 @@ export async function getWorkspace(slug = DEFAULT_WORKSPACE_SLUG): Promise<Works
       requestContact: settings.requestContact,
       allowGeneralKnowledge: settings.allowGeneralKnowledge,
       generalDisclaimer: settings.generalDisclaimer,
+      widgetTheme: settings.widgetTheme,
       model: settings.model,
       temperature: settings.temperature,
     },

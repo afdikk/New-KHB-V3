@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api, type ChatbotSettings } from '../services/api';
+import { Lottie } from 'lottie-react';
+import { api, type ChatbotSettings, type WidgetTheme } from '../services/api';
 import { useResource } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
 import { SelectField, SettingRow, Slider, Switch, TextField } from '../components/ui/Fields';
@@ -22,6 +23,7 @@ const FALLBACKS = ['Eskalasi ke Pendamping PPH', 'Kirim tautan SIHALAL', 'Tawark
 export default function ChatbotPage() {
   const notify = useToast();
   const { data, loading, error, reload } = useResource<ChatbotSettings>(() => api.chatbot.get(), []);
+  const { data: themes } = useResource<WidgetTheme[]>(() => api.chat.themes(), []);
   const [form, setForm] = useState<ChatbotSettings | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -44,6 +46,7 @@ export default function ChatbotPage() {
         requestContact: form.requestContact,
         allowGeneralKnowledge: form.allowGeneralKnowledge,
         generalDisclaimer: form.generalDisclaimer,
+        widgetTheme: form.widgetTheme,
         temperature: form.temperature,
       });
       setForm(saved);
@@ -88,6 +91,7 @@ export default function ChatbotPage() {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
   const dirty = data ? JSON.stringify(form) !== JSON.stringify(data) : false;
+  const activeTheme = themes?.find((theme) => theme.key === form.widgetTheme) ?? null;
 
   return (
     <section className="view active" id="view-chatbot">
@@ -273,6 +277,45 @@ export default function ChatbotPage() {
           <div className="m-card">
             <div className="m-card-head">
               <div>
+                <h2>Tema widget</h2>
+                <p>Warna &amp; animasi panel “Tanya Halal” di landing</p>
+              </div>
+            </div>
+            <div className="m-card-pad">
+              <div className="m-theme-grid">
+                {(themes ?? []).map((theme) => {
+                  const active = form.widgetTheme === theme.key;
+                  return (
+                    <button
+                      key={theme.key}
+                      type="button"
+                      className={`m-theme-card${active ? ' is-active' : ''}`}
+                      onClick={() => set('widgetTheme', theme.key)}
+                      style={active ? { borderColor: theme.accent, boxShadow: `0 0 0 3px ${theme.accent}1a` } : undefined}
+                      aria-pressed={active}
+                    >
+                      <span className="m-theme-art" style={{ background: theme.accentLight }}>
+                        {theme.lottie ? (
+                          <Lottie src={theme.lottie} autoplay loop style={{ width: 38, height: 38 }} />
+                        ) : (
+                          <span className="m-theme-dot" style={{ background: theme.accent }} />
+                        )}
+                      </span>
+                      <span className="m-theme-name">{theme.label}</span>
+                      <span className="m-theme-desc">{theme.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="m-field-hint" style={{ marginTop: 10 }}>
+                Tema dipakai widget di landing dan halaman chat publik. Simpan untuk menerapkan.
+              </p>
+            </div>
+          </div>
+
+          <div className="m-card">
+            <div className="m-card-head">
+              <div>
                 <h2>Pratinjau pesan</h2>
                 <p>Tampilan sapaan di kanal percakapan</p>
               </div>
@@ -280,7 +323,14 @@ export default function ChatbotPage() {
             <div className="m-card-pad">
               <div className="m-preview-chat">
                 <div className="m-preview-row">
-                  <span className="m-preview-ava">
+                  <span
+                    className="m-preview-ava"
+                    style={
+                      activeTheme
+                        ? { backgroundImage: `linear-gradient(135deg, ${activeTheme.accent}, ${activeTheme.accentDark})` }
+                        : undefined
+                    }
+                  >
                     {(form.assistantName.trim().charAt(0) || 'K').toUpperCase()}
                   </span>
                   <div className="m-preview-bubble">{form.greeting}</div>

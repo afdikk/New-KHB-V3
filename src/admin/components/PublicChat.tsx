@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, SOURCE_LABEL, type ChatBoot, type VisitorSession } from '../services/api';
+import { Lottie } from 'lottie-react';
 import { MarkdownText } from './ui/MarkdownText';
 import { MicButton } from './MicButton';
 
@@ -87,6 +88,8 @@ export function PublicChat({
   const keys = useMemo(() => storageKeys(slug), [slug]);
 
   const [boot, setBoot] = useState<ChatBoot | null>(null);
+  /** Tema widget dari admin (warna aksen); null = pakai hijau bawaan CSS. */
+  const [theme, setTheme] = useState<ChatBoot['theme'] | null>(null);
   const [identity, setIdentity] = useState<Identity | null>(() => readIdentity(slug));
   const [draftIdentity, setDraftIdentity] = useState({ name: '', contact: '', consent: false });
   const [identityError, setIdentityError] = useState('');
@@ -112,7 +115,9 @@ export function PublicChat({
   useEffect(() => {
     void (async () => {
       try {
-        setBoot(await api.chat.boot(slug));
+        const data = await api.chat.boot(slug);
+        setBoot(data);
+        setTheme(data.theme ?? null);
       } catch {
         // biarkan penyusun pertanyaan bawaan yang tampil
       }
@@ -257,10 +262,20 @@ export function PublicChat({
     );
   }, [sessions, search]);
 
+  // Warna tema menimpa variabel hijau global, hanya di dalam cakupan chat ini.
+  const themeStyle = theme
+    ? ({
+        '--green': theme.accent,
+        '--green-dark': theme.accentDark,
+        '--green-light': theme.accentLight,
+        '--green-subtle': theme.accentSubtle,
+      } as React.CSSProperties)
+    : undefined;
+
   // ── Gerbang identitas (sekali saja, lalu tersimpan) ──────────
   if (!identity) {
     return (
-      <div className={`pc-shell is-gate${compact ? ' is-compact' : ''}`}>
+      <div className={`pc-shell is-gate${compact ? ' is-compact' : ''}`} style={themeStyle}>
         <div className="pc-main">
           {showHeader ? (
             <header className="pc-head">
@@ -323,7 +338,7 @@ export function PublicChat({
   // ── Layar riwayat (penuh, dengan tombol back) ───────────────
   if (screen === 'history') {
     return (
-      <div className={`pc-shell is-history${compact ? ' is-compact' : ''}`}>
+      <div className={`pc-shell is-history${compact ? ' is-compact' : ''}`} style={themeStyle}>
         <div className="pc-main">
           <header className="pc-head pc-head-history">
             <span className="pc-avatar" aria-hidden="true">H</span>
@@ -383,7 +398,7 @@ export function PublicChat({
 
   // ── Layar percakapan ────────────────────────────────────────
   return (
-    <div className={`pc-shell${compact ? ' is-compact' : ''}`}>
+    <div className={`pc-shell${compact ? ' is-compact' : ''}`} style={themeStyle}>
       <div className="pc-main">
         {showHeader ? (
           <header className="pc-head">
@@ -422,6 +437,16 @@ export function PublicChat({
 
         <div className="pc-body">
           {loadingHistory ? <p className="pc-loading">Memuat riwayat…</p> : null}
+          {!loadingHistory && messages.length === 0 && theme ? (
+            <div className="pc-welcome" aria-hidden="true">
+              <Lottie
+                src={theme.welcomeLottie ?? theme.lottie ?? undefined}
+                autoplay
+                loop
+                style={{ width: 152, height: 152 }}
+              />
+            </div>
+          ) : null}
           {messages.map((message) => (
             <div key={message.id} className={`pc-msg ${message.role}`}>
               {message.role === 'bot' ? <span className="pc-msg-avatar" aria-hidden="true">K</span> : null}

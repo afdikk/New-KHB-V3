@@ -123,6 +123,20 @@ export interface DashboardSummary {
   topics: Array<{ label: string; value: number }>;
 }
 
+export interface WidgetTheme {
+  key: string;
+  label: string;
+  description: string;
+  accent: string;
+  accentDark: string;
+  accentLight: string;
+  accentSubtle: string;
+  gold: string;
+  headerGradient: string;
+  lottie: string | null;
+  welcomeLottie?: string | null;
+}
+
 export interface ChatbotSettings {
   assistantName: string;
   greeting: string;
@@ -134,6 +148,7 @@ export interface ChatbotSettings {
   requestContact: boolean;
   allowGeneralKnowledge: boolean;
   generalDisclaimer: boolean;
+  widgetTheme: string;
   model: string | null;
   temperature: number;
   capabilities: {
@@ -311,6 +326,7 @@ export interface ChatAnswer {
 export interface ChatBoot {
   workspace: { name: string; slug: string; city: string | null; tagline: string | null };
   assistant: { name: string; greeting: string; language: string; showSources: boolean };
+  theme: WidgetTheme;
   starters: string[];
   capabilities: { rag: boolean; general: boolean };
 }
@@ -515,6 +531,7 @@ export const api = {
 
   chat: {
     boot: (slug = 'khb-bandung') => request<ChatBoot>(`/chat/boot?slug=${encodeURIComponent(slug)}`),
+    themes: () => request<WidgetTheme[]>('/chat/themes'),
     send: (body: { message: string; sessionKey?: string; customerName?: string; slug?: string }) =>
       request<ChatAnswer>('/chat', { method: 'POST', body: JSON.stringify(body) }),
     history: (sessionKey: string, slug = 'khb-bandung') =>

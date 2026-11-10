@@ -130,6 +130,9 @@ model ChatbotSetting {
   autoEscalate   Boolean @default(true) @map("auto_escalate")
   requestContact Boolean @default(false) @map("request_contact")
 
+  /// Tema tampilan widget chat (classic, ramadan, idul_fitri, maulid, kemerdekaan, tahun_baru).
+  widgetTheme String @default("classic") @map("widget_theme") @db.VarChar(40)
+
   /// Fitur utama KHB: boleh menjawab pertanyaan umum di luar dokumen RAG.
   allowGeneralKnowledge Boolean @default(true) @map("allow_general_knowledge")
   /// Tandai jawaban umum dengan catatan "bukan dari dokumen KHB".

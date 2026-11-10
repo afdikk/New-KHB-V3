@@ -12,6 +12,7 @@ export const updateChatbotSettingsSchema = z.object({
   requestContact: z.boolean().optional(),
   allowGeneralKnowledge: z.boolean().optional(),
   generalDisclaimer: z.boolean().optional(),
+  widgetTheme: z.enum(['classic', 'ramadan', 'idul_fitri', 'maulid', 'kemerdekaan', 'tahun_baru']).optional(),
   model: z.string().trim().max(120).nullable().optional(),
   temperature: z.number().min(0).max(2).optional(),
 });

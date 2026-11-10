@@ -12,6 +12,7 @@ import {
   sendMessage,
   sendVisitorMessage,
 } from './chat.service';
+import { WIDGET_THEMES } from './widget-themes';
 
 export const chatRouter = Router();
 
@@ -96,6 +97,14 @@ chatRouter.post(
         sessionKey: body.sessionKey,
       }),
     );
+  }),
+);
+
+/** GET /api/v1/chat/themes — katalog tema widget (dipakai panel admin). */
+chatRouter.get(
+  '/themes',
+  asyncHandler(async (_req, res) => {
+    ok(res, WIDGET_THEMES);
   }),
 );
 

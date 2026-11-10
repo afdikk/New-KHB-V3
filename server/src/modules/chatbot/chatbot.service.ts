@@ -15,6 +15,7 @@ export interface ChatbotSettingsView {
   requestContact: boolean;
   allowGeneralKnowledge: boolean;
   generalDisclaimer: boolean;
+  widgetTheme: string;
   model: string | null;
   temperature: number;
   capabilities: {
