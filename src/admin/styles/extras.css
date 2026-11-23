@@ -336,6 +336,8 @@
 
 /* ── Markdown jawaban asisten (format sama seperti panel RAG) ───────────── */
 
+/* Cegah satu kata/tautan panjang mendorong lebar balon keluar layar. */
+.md-answer { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .md-answer > :first-child { margin-top: 0; }
 .md-answer > :last-child { margin-bottom: 0; }
 .md-answer p { margin: 0 0 8px; }
@@ -347,21 +349,25 @@
 .md-answer h2 { font-size: 14px; }
 .md-answer strong { color: var(--ink); font-weight: 600; }
 .md-answer em { font-style: italic; }
-.md-answer ul, .md-answer ol { margin: 4px 0 8px; padding-left: 18px; }
+.md-answer ul, .md-answer ol { margin: 4px 0 8px; padding-left: 1.15em; }
 .md-answer li { margin-bottom: 4px; }
 .md-answer li::marker { color: var(--muted-2); }
+.md-answer a { color: var(--green); text-decoration: underline; }
 .md-answer code {
   background: rgba(30, 27, 75, .06); border-radius: 4px;
   padding: 1px 5px; font-size: 12px; font-family: ui-monospace, Consolas, monospace;
 }
-.md-answer pre { background: var(--line-2); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
-.md-answer pre code { background: none; padding: 0; }
-.md-answer a { color: var(--green); text-decoration: underline; }
+/* Blok kode & tabel: menggeser di dalam kotaknya sendiri, bukan melebarkan balon. */
+.md-answer pre { background: var(--line-2); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; max-width: 100%; }
+.md-answer pre code { background: none; padding: 0; overflow-wrap: normal; white-space: pre; }
 .md-answer blockquote { border-left: 3px solid var(--line); margin: 8px 0; padding-left: 10px; color: var(--muted); }
-.md-answer table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12.5px; }
+.md-answer .md-table-scroll { max-width: 100%; overflow-x: auto; margin: 8px 0; }
+.md-answer .md-table-scroll > table { margin: 0; }
+.md-answer table { border-collapse: collapse; width: 100%; max-width: 100%; margin: 8px 0; font-size: 12.5px; }
 .md-answer th, .md-answer td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .md-answer th { background: var(--line-2); font-weight: 600; color: var(--ink); }
 .md-answer hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+.md-answer img { max-width: 100%; height: auto; }
 
 /* Di balon pengguna (latar hijau) warna teks mengikuti putih */
 .user-row .md-answer strong, .user-row .md-answer h1, .user-row .md-answer h2,
